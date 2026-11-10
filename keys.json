@@ -1,0 +1,6 @@
+{
+  "layout:sweat-equity": {
+    "cmd-shift-e": "mod.open:sweat-equity",
+    "ctrl-shift-e": "mod.open:sweat-equity"
+  }
+}
