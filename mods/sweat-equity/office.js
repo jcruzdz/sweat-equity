@@ -106,16 +106,18 @@ function room(sc, opt, x0, y0, R, i) {
   // whiteboard: ticket and status on the title strip, one dark card per subtask
   const wx = x0 + 43;
   sc.img("whiteboard", wx, y0 + 5, L.OBJ, y0 + 31);
-  // four columns as in the design: to do, in progress, review, done. The one the story is in is tinted; one tick per subtask
-  const cw = 12;
-  if (R.curCol >= 0) sc.box(wx + 3 + R.curCol * cw, y0 + 12, cw - 1, 10, "#ffe2a8", L.OBJ, y0 + 32);
+  // the columns of the story's Jira board (four in the sample), sharing the 48 pixels the design gives them.
+  // The one the story is in is tinted (red when stopped); one tick per subtask, red in a column that holds a stopped one
+  const nc = Math.max(1, R.cols?.length ?? 4), cw = Math.max(5, Math.floor(48 / nc)), per = Math.max(1, Math.floor((cw - 2) / 3));
+  if (R.curCol >= 0) sc.box(wx + 3 + R.curCol * cw, y0 + 12, cw - 1, 10, R.blocked ? "#ffb3a8" : "#ffe2a8", L.OBJ, y0 + 32);
   (R.cols ?? []).forEach((n, c) => {
-    for (let k = 0; k < Math.min(n, 9); k++) sc.box(wx + 4 + c * cw + (k % 3) * 3, y0 + 14 + Math.floor(k / 3) * 3, 2, 2, c === R.curCol ? "#23263a" : "#8a8fa3", L.OBJ, y0 + 33);
+    const stop = R.blockedCols?.[c];
+    for (let k = 0; k < Math.min(n, per * 3); k++) sc.box(wx + 4 + c * cw + (k % per) * 3, y0 + 14 + Math.floor(k / per) * 3, 2, 2, stop ? "#d32f2f" : c === R.curCol ? "#23263a" : "#8a8fa3", L.OBJ, y0 + 33);
   });
   // the whole board is a button, not only its title strip: it opens the story's board
   if (!R.general) {
     const [bw, bh] = sc.size("whiteboard");
-    sc.at(div().id(`se-boardhit-${R.key}`).w(u(bw)).h(u(bh)).cursor_pointer().tooltip([R.title ? `${R.key} · ${R.title}` : R.key, R.cols ? R.cols.map((n, c) => `${opt.t.colNames[c]} ${n}`).join(" · ") : ""].filter(Boolean).join("\n")).on_click((_e, cx) => opt.onIssue(R, cx)), wx, y0 + 5);
+    sc.at(div().id(`se-boardhit-${R.key}`).w(u(bw)).h(u(bh)).cursor_pointer().tooltip([R.title ? `${R.key} · ${R.title}` : R.key, R.cols ? R.cols.map((n, c) => `${(R.names ?? opt.t.colNames)[c] ?? ""} ${n}`).join(" · ") : ""].filter(Boolean).join("\n")).on_click((_e, cx) => opt.onIssue(R, cx)), wx, y0 + 5);
   }
   const title = h_flex().id(`se-board-${R.key}`).w(u(50)).h(u(5)).px(u(1.5)).items_center().cursor_pointer().tooltip(R.title || R.key)
     .text_size(fpx(u, 3.5, 8.5)).font_bold().text_color(col("#23263a"))

@@ -93,6 +93,8 @@ Todos opcionales, en `~/.config/herdr-app/sweat-equity.json`. El archivo se lee 
 | `lang` | `"en"` (por defecto) o `"es"` |
 | `jira` | la dirección de tu Jira Cloud; enciende las pizarras |
 | `keychain` | nombre de la entrada del llavero con el token (por defecto `herdr-jira`) |
+| `jiraBoards` | `{ "PROJ": 12 }`: qué tablero usa un proyecto cuando tiene varios (por defecto, su primer tablero kanban). Las columnas y qué estado va en cada una siempre se leen de ese tablero, nunca se fijan aquí |
+| `jiraBlocked` | regex de los nombres de estado que significan detenido (por defecto `deten\|bloque\|blocked\|hold\|impedi\|paus\|espera`): se quedan en su columna, en rojo |
 | `workspaces` | una lista inicial, `[{ "name", "root", "color" }]`, que solo se usa hasta que agregas o cambias un piso en el edificio |
 | `demo` | `true` muestra siempre el edificio de ejemplo |
 | `frame` | `[ancho, alto]` dibuja el edificio en un recuadro de ese tamaño, para capturas |
@@ -109,7 +111,7 @@ Un space en otra computadora cae en el mismo piso cuando su carpeta está en el 
 - El archivo de ajustes de arriba, y su propio estado a través de Herdr.
 - `find`, a tres carpetas de profundidad dentro de la carpeta de un workspace, para listar sus repositorios cuando haces clic en `+ nuevo`.
 - `hc read`, las últimas 40 líneas de la pantalla de cada agente del piso en el que estás, cada 6 segundos, para encontrar los ayudantes que lista ahí.
-- Con Jira encendido: `security` para leer el token del llavero (se queda solo en memoria), y peticiones a tu dirección de Jira por las historias en pantalla, cada dos minutos. Nada más sale de tu computadora.
+- Con Jira encendido: `security` para leer el token del llavero (se queda solo en memoria), y peticiones a tu dirección de Jira por las historias en pantalla y el tablero de su proyecto, cada minuto. Cuando una historia o subtarea cambia de estado, la línea de la barra lateral manda una notificación (si se detuvo, como advertencia). Nada más sale de tu computadora.
 - Escribe un solo archivo, `mods/sweat-equity/.debug.json`: una foto de lo que muestra el edificio, para diagnosticar.
 
 ## Si algo se ve mal

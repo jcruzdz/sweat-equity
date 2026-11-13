@@ -232,15 +232,15 @@ function floorModule(sc, opt, row, BX, y) {
     // right click: move it to another floor
     if (opt.onDev) chip = chip.on_mouse_down("right", (_e, cx) => opt.onDev(s, cx));
     if (s.agents) chip = chip.child(div().flex_none().text_color(col(look ? look.color : "#c9d6e0")).child(`×${s.agents}`));
-    // the story's board, when Jira says: four bars, to do / in progress / review / done, each as tall as its share of the subtasks
+    // the story's board, when Jira says: one bar per column of its Jira board, each as tall as its share of the subtasks
     const iss = s.keys.length ? opt.issues?.[s.keys[0]] : null, cols = iss?.cols, tot = cols ? cols.reduce((p, q) => p + q, 0) : 0;
     if (tot) {
-      // as in the design: four columns, each a stack of ticks on a dark ground; the one the story is in is lit
-      const top = Math.max(...cols);
+      // as in the design: a column each, a stack of ticks on a dark ground; the one the story is in is lit, a stopped one is red
+      const top = Math.max(...cols), bw = cols.length > 5 ? 1.4 : 1.8;
       chip = chip.child(h_flex().flex_none().items_end().gap(u(0.7)).h(u(5)).children(cols.map((n, c) => {
-        const lit = c === iss.curCol;
-        return v_flex().w(u(1.8)).h(u(5)).justify_end().bg(col(lit ? "#3a4580" : "#1c2452"))
-          .child(div().w(u(1.8)).h(n ? Math.max(u(1.2), u(5 * n / top)) : 0).bg(col(lit ? "#ffffff" : "#94b0c2")));
+        const lit = c === iss.curCol, stop = iss.blockedCols?.[c] || (lit && iss.blocked);
+        return v_flex().w(u(bw)).h(u(5)).justify_end().bg(col(stop ? "#5a1a1a" : lit ? "#3a4580" : "#1c2452"))
+          .child(div().w(u(bw)).h(n ? Math.max(u(1.2), u(5 * n / top)) : 0).bg(col(stop ? "#ff5a4f" : lit ? "#ffffff" : "#94b0c2")));
       })));
     }
     sc.at(chip, x, y + Y0 + 36);
