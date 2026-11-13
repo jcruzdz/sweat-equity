@@ -5,17 +5,28 @@ import { div, image, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { Scene, L, STATUS, INK, ALERT, DIR, col, hash, tag, centered, fpx } from "./scene.js";
 import { SPOTS, PEOPLE } from "./sprites.js";
+import { paintName } from "./graffiti.js";
 
 export const BW = 292;          // building width, art px
-const FLOOR_H = 46, ROOF_H = 32, LOBBY_H = 52, GROUND_H = 24, SKY_MIN = 26, SIDE_MIN = 18;
-const SIGN_X = 12, SIGN_W = 72, BAY_X = 94, BAY_W = 58, BAY_PITCH = 66;
-export const BAYS = 3;          // windows per floor
+const FLOOR_H = 58, ROOF_H = 32, LOBBY_H = 52, GROUND_H = 24, SKY_MIN = 26, SIDE_MIN = 18;
+const SIGN_X = 118, SIGN_W = 56, BAY_W = 63;
+const Y0 = 12;                          // a floor starts with its slab; the windows start this far down (art px)
+const BAY_XS = [11, 80, 149, 218];      // four contiguous windows; the board hangs in the slab above them
+export const BAYS = 4;          // windows per floor; a workspace with more developments gets another floor above
+
+/** The tower bottom-up, one entry per floor: a workspace with more developments than windows continues on the next floor. */
+export function stackOf(floors) {
+  return floors.flatMap((f) => {
+    const n = Math.max(1, Math.ceil(f.spaces.length / BAYS));
+    return Array.from({ length: n }, (_, k) => ({ floor: n === 1 ? f : { ...f, spaces: f.spaces.slice(k * BAYS, (k + 1) * BAYS) }, all: f.spaces.length, cont: k, last: k === n - 1 }));
+  });
+}
 const SKY = ["#0c1034", "#0e1238", "#10143d", "#111741", "#131946", "#151b4a", "#171d4f", "#182053", "#1a2258", "#1c245c", "#1e2661", "#1f2965", "#212b6a", "#232d6e"];
 
 /** The largest whole scale at which a tower of `floors` fits the area. */
 export function facadeScale(wpx, hpx, floors) {
   const need = ROOF_H + floors * FLOOR_H + LOBBY_H + GROUND_H + SKY_MIN;
-  return Math.max(1, Math.min(4, Math.floor(Math.min(wpx / (BW + 2 * SIDE_MIN), hpx / need))));
+  return Math.max(1, Math.min(4, Math.floor(2 * Math.min(wpx / (BW + 2 * SIDE_MIN), hpx / need)) / 2));
 }
 
 /**
@@ -30,8 +41,9 @@ export function buildFacade(sc, area, model, opt) {
   const u = sc.u, t = opt.t;
   const W = Math.ceil(area.W), H = Math.ceil(area.H);
   const gy = H - GROUND_H;
-  const rows = [...model.floors].reverse().map((f, i) => ({ floor: f, tag: `P${model.floors.length - i}` }));
-  if (model.available) rows.unshift({ floor: null, tag: `P${model.floors.length + 1}` });
+  const stack = stackOf(model.floors);
+  const rows = [...stack].reverse().map((r, i) => ({ ...r, tag: `P${stack.length - i}` }));
+  if (model.available) rows.unshift({ floor: null, tag: `P${stack.length + 1}` });
   const lobbyY = gy - LOBBY_H;
   const top = lobbyY - rows.length * FLOOR_H - ROOF_H;
   const BX = Math.floor((W - BW) / 2);
@@ -42,11 +54,11 @@ export function buildFacade(sc, area, model, opt) {
   for (let x = 0; x < W; x += 220) for (let y = 0; y < gy * 0.6; y += 150) sc.img("stars", x, y, L.FLOOR, -8);
   const moonX = Math.max(6, BX - 60);
   sc.img("moon", moonX, 10, L.FLOOR, -7);
-  // the moon is also the way back for hidden floors: part of the sky, it answers only when something is hidden
-  if (opt.onPeek && (model.hiddenN > 0 || opt.peek)) {
+  // the moon is the way back for hidden floors. It is always a button: with nothing hidden it says so (the eye on each floor hides one)
+  if (opt.onPeek) {
     const [mw, mh] = sc.size("moon");
-    let moon = div().id("se-moon").w(u(mw)).h(u(mh)).rounded(u(mw / 2)).cursor_pointer()
-      .tooltip(opt.peek ? t.peekOff : `${t.peekOn} (${model.hiddenN})`)
+    const tip = opt.peek ? t.peekOff : model.hiddenN > 0 ? `${t.peekOn} (${model.hiddenN})` : opt.onHide ? `${t.peekNone} · ${t.peekHint}` : t.peekNone;
+    let moon = div().id("se-moon").w(u(mw)).h(u(mh)).rounded(u(mw / 2)).cursor_pointer().tooltip(tip)
       .on_click((_e, cx) => opt.onPeek(cx));
     if (opt.peek) moon = moon.border(Math.max(1, u(0.6))).border_color(col("#f4f4f866"));   // a faint ring while they are shown
     sc.at(moon, moonX, 10, L.UI);
@@ -92,6 +104,17 @@ export function buildFacade(sc, area, model, opt) {
   return { BX, top, gy };
 }
 
+/** What a window says when pointed at: the development, then each story it works on with its name, status and progress. */
+function spaceTip(s, opt) {
+  const lines = (s.keys ?? []).map((k) => {
+    const i = opt.issues?.[k];
+    if (!i) return k;
+    const c = i.counts, total = c ? c.reduce((a, b) => a + b, 0) : 0;
+    return [k, i.summary, i.status, total ? `${c[c.length - 1]}/${total}` : ""].filter(Boolean).join(" · ");
+  });
+  return [s.title ?? s.name, ...lines].join("\n");
+}
+
 /** Developments on no floor wait outside, by the bench: a click sends one to a floor. */
 function outside(sc, opt, loose, BX, gy) {
   if (!loose.length || !opt.onDev) return;
@@ -126,106 +149,110 @@ function floorModule(sc, opt, row, BX, y) {
   sc.img("floor_body", BX, y, L.OBJ, y);
   // light strips at both ends, in the company color
   [BX + 4, BX + BW - 6].forEach((x) => {
-    sc.box(x - 3, y + 6, 8, 34, accent + "12", L.OBJ, y + 1);
-    sc.box(x - 1, y + 7, 4, 32, accent + "22", L.OBJ, y + 1);
-    sc.box(x, y + 8, 2, 30, accent, L.OBJ, y + 1);
-    sc.box(x, y + 8, 2, 2, "#fff3d6", L.OBJ, y + 2);
+    sc.box(x - 3, y + Y0 + 6, 8, 34, accent + "12", L.OBJ, y + 1);
+    sc.box(x - 1, y + Y0 + 7, 4, 32, accent + "22", L.OBJ, y + 1);
+    sc.box(x, y + Y0 + 8, 2, 30, accent, L.OBJ, y + 1);
+    sc.box(x, y + Y0 + 8, 2, 2, "#fff3d6", L.OBJ, y + 2);
   });
-  sc.box(BX + SIGN_X, y + 38, SIGN_W, 1, accent + "6e", L.OBJ, y + 1);
-  sc.at(tag(u, row.tag, "#f4f4f8", "#f4f4f8"), BX - 17, y + 16);
+  sc.at(tag(u, row.tag, "#f4f4f8", "#f4f4f8"), BX - 17, y + Y0 + 14);
 
-  // the sign: company name, or the invitation to add a workspace
+  // the board hangs in the slab above the windows: the company name painted on it, or the invitation to add a workspace.
+  // Beside it, in the slab, the floor's own controls. A workspace's second floor says "NAME 2" and has no controls.
+  const bx = BX + SIGN_X, by = y + 2, mid = bx + SIGN_W / 2, ctlX = BX + 210, ctlY = y + 3;
   if (f && ghost) {
-    // its name, the word "Hidden", and the way back
-    let sign = v_flex().id(`se-sign-${f.name}`).relative().w(u(SIGN_W - 4)).h(u(27)).items_center().justify_center().gap(u(1.5))
-      .child(div().max_w(u(SIGN_W - 6)).truncate().text_size(u(f.name.length > 9 ? 6.2 : 8.2)).font_bold().text_color(col(f.color + "55")).child(f.name))
-      .child(div().text_size(fpx(u, 3.4, 8.5)).text_color(col("#94b0c2")).child(t.ghost));
-    if (opt.onHide) sign = sign.child(h_flex().absolute().top(0).right(0).child(iconButton(u, `se-eye-${f.name}`, "eye-off", t.showFloor, "#c9d6e0", () => opt.onHide(f.name))));
-    sc.at(sign, BX + SIGN_X + 2, y + 9);
+    paintName(sc, f.name, mid, by + 4.5, "#56608f", y + 5, true);
+    sc.at(div().id(`se-sign-${f.name}`).w(u(SIGN_W)).h(u(11)).tooltip(`${f.name} · ${t.ghost}`), bx, by);
+    const ctl = h_flex().gap(u(1.5)).items_center().child(div().text_size(fpx(u, 3.4, 8.5)).text_color(col("#94b0c2")).child(t.ghost));
+    centered(sc, opt.onHide ? ctl.child(iconButton(u, `se-eye-${f.name}`, "eye-off", t.showFloor, "#c9d6e0", () => opt.onHide(f.name))) : ctl, ctlX, ctlY, 70);
   } else if (f) {
-    let line = h_flex().gap(u(2.5)).items_center().text_size(fpx(u, 3.4, 8.5))
-      .child(div().text_color(col("#c9d6e0")).child(`${f.spaces.length} ${t.devs} · ${t.enter}`));
-    if (opt.onNew) {
-      line = line.child(div().id(`se-new-${f.name}`).font_bold().text_color(col(accent)).cursor_pointer()
-        .on_click((_e, cx) => { cx.stop_propagation(); opt.onNew(f.name, cx); })
-        .child(t.newBtn));
+    const first = row.cont === 0;
+    paintName(sc, first ? f.name : `${f.name.slice(0, 8)} ${row.cont + 1}`, mid, by + 4.5, accent, y + 5);
+    sc.at(div().id(first ? `se-sign-${f.name}` : `se-sign-${f.name}-${row.cont + 1}`).w(u(SIGN_W)).h(u(11)).cursor_pointer()
+      .tooltip(`${f.name} · ${row.all} ${t.devs} · ${t.enter}`)
+      .on_click((_e, cx) => opt.onEnter(f.name, cx)), bx, by);
+    if (first && (opt.onEdit || opt.onNew)) {
+      let ctl = h_flex().gap(u(2.2)).items_center();
+      if (opt.onNew) {
+        ctl = ctl.child(div().id(`se-new-${f.name}`).px(u(1.2)).text_size(fpx(u, 4.4, 11)).font_bold().text_color(col(accent)).cursor_pointer().tooltip(t.newBtn)
+          .on_click((_e, cx) => { cx.stop_propagation(); opt.onNew(f.name, cx); })
+          .child("+"));
+      }
+      if (opt.onEdit) {
+        if (opt.onHide) ctl = ctl.child(iconButton(u, `se-eye-${f.name}`, "eye", t.hideFloor, "#c9d6e0", () => opt.onHide(f.name)));
+        ctl = ctl.child(iconButton(u, `se-edit-${f.name}`, "pen", t.editFloor, "#c9d6e0", (cx) => opt.onEdit(f.name, cx)));
+      }
+      centered(sc, ctl, ctlX, ctlY, 70);
     }
-    let sign = v_flex().id(`se-sign-${f.name}`).relative().w(u(SIGN_W - 4)).h(u(27)).items_center().justify_center().gap(u(1.5)).cursor_pointer()
-      .on_click((_e, cx) => opt.onEnter(f.name, cx))
-      .child(div().max_w(u(SIGN_W - 6)).truncate().text_size(u(f.name.length > 9 ? 6.2 : 8.2)).font_bold().text_color(col(accent)).child(f.name))
-      .child(line);
-    // the floor's own controls, top right: hide it, and edit
-    if (opt.onEdit) {
-      const eye = opt.onHide ? [iconButton(u, `se-eye-${f.name}`, "eye", t.hideFloor, "#c9d6e0", () => opt.onHide(f.name))] : [];
-      sign = sign.child(h_flex().absolute().top(0).right(0).gap(u(0.5)).children(eye)
-        .child(iconButton(u, `se-edit-${f.name}`, "pen", t.editFloor, "#c9d6e0", (cx) => opt.onEdit(f.name, cx))));
-    }
-    sc.at(sign, BX + SIGN_X + 2, y + 9);
   } else {
-    const add = v_flex().id("se-add").w(u(SIGN_W - 8)).h(u(23)).items_center().justify_center().gap(u(1))
-      .border(Math.max(1, u(0.5))).border_dashed().border_color(col("#94b0c2")).cursor_pointer()
+    const add = h_flex().id("se-add").w(u(SIGN_W)).h(u(11)).items_center().justify_center()
+      .border(Math.max(1, u(0.5))).border_dashed().border_color(col("#94b0c2")).cursor_pointer().tooltip(t.vacant)
       .on_click((_e, cx) => opt.onAdd(cx))
-      .child(div().text_size(fpx(u, 3.6, 8.5)).text_color(col("#c9d6e0")).child(t.vacant))
       .child(div().text_size(fpx(u, 4, 9.5)).font_bold().text_color(col("#f4f4f8")).child(t.addWorkspace));
-    sc.at(add, BX + SIGN_X + 4, y + 11);
+    sc.at(add, bx, by);
   }
 
   // one window per development
   for (let j = 0; j < BAYS; j++) {
-    const x = BX + BAY_X + j * BAY_PITCH;
+    const x = BX + BAY_XS[j];
     const s = f ? f.spaces[j] : null;
     if (!s || !s.agents) {
-      sc.img(`win_dark_${j % 3}`, x, y + 6, L.OBJ, y + 3);
+      sc.img(`win_dark_${j % 3}`, x, y + Y0 + 6, L.OBJ, y + Y0 + 3);
     } else {
       const lit = `win_lit_${Math.min(3, s.agents)}_${hash(s.id) % 4}`, busy = s.status === "working";
       // a working window breathes; the others just glow
-      if (busy) sc.anim("halo", x - 4, y + 2, "opacity", { from: 0.4, to: 1, period: 1700 }, L.OBJ, y + 2);
-      else sc.img("halo", x - 4, y + 2, L.OBJ, y + 2);
-      sc.img(lit, x, y + 6, L.OBJ, y + 3);
-      sc.box(x, y + 34, BAY_W, 1, "#ffb3476e", L.OBJ, y + 4);
+      if (busy) sc.anim("halo", x - 4, y + Y0 + 2, "opacity", { from: 0.4, to: 1, period: 1700 }, L.OBJ, y + Y0 + 2);
+      else sc.img("halo", x - 4, y + Y0 + 2, L.OBJ, y + Y0 + 2);
+      sc.img(lit, x, y + Y0 + 6, L.OBJ, y + Y0 + 3);
+      sc.box(x, y + Y0 + 34, BAY_W, 1, "#ffb3476e", L.OBJ, y + Y0 + 4);
       // ...and inside, screens change and hands move
       if (busy) (SPOTS[lit] ?? []).forEach(([sx, sy, hx, hy], n) => {
-        sc.blink(x + sx, y + 6 + sy, 4, 3, "#23346e", 640 + n * 190, L.OBJ, y + 5, 0, 0.8);
-        sc.blink(x + hx, y + 6 + hy, 1, 1, "#fff3d6", 230 + n * 50, L.OBJ, y + 5);
-        sc.blink(x + hx + (sx > hx ? 1 : -1), y + 6 + hy, 1, 1, "#fff3d6", 230 + n * 50, L.OBJ, y + 5, 1, 0);
+        sc.blink(x + sx, y + Y0 + 6 + sy, 4, 3, "#23346e", 640 + n * 190, L.OBJ, y + Y0 + 5, 0, 0.8);
+        sc.blink(x + hx, y + Y0 + 6 + hy, 1, 1, "#fff3d6", 230 + n * 50, L.OBJ, y + Y0 + 5);
+        sc.blink(x + hx + (sx > hx ? 1 : -1), y + Y0 + 6 + hy, 1, 1, "#fff3d6", 230 + n * 50, L.OBJ, y + Y0 + 5, 1, 0);
       });
     }
     if (!s) {
       // the first empty window of a floor offers to start something there
-      if (f && !ghost && opt.onNew && j === f.spaces.length) {
+      if (f && !ghost && opt.onNew && row.last && j === f.spaces.length) {
         const fresh = h_flex().id(`se-newbay-${f.name}`).w(u(BAY_W)).h(u(7)).items_center().justify_center().bg(col(INK))
           .border(Math.max(1, u(0.5))).border_dashed().border_color(col("#56608f"))
           .text_size(fpx(u, 4, 9.5)).font_semibold().text_color(col("#c9d6e0")).cursor_pointer()
           .on_click((_e, cx) => opt.onNew(f.name, cx))
           .child(t.newBtn);
-        sc.at(fresh, x, y + 36);
+        sc.at(fresh, x, y + Y0 + 36);
       }
       continue;
     }
     const look = STATUS[s.status];
-    const more = j === BAYS - 1 && f.spaces.length > BAYS ? ` +${f.spaces.length - BAYS}` : "";
     let chip = h_flex().id(`se-space-${s.id}`).w(u(BAY_W)).h(u(7)).px(u(1.8)).gap(u(1.5)).items_center().bg(col(INK))
       .border(Math.max(1, u(0.5))).border_color(col(look ? look.color : "#3b4262"))
-      .text_size(fpx(u, 4, 9.5)).text_color(col("#f4f4f8")).cursor_pointer().tooltip(s.title ?? s.name)
+      .text_size(fpx(u, 4, 9.5)).text_color(col("#f4f4f8")).cursor_pointer().tooltip(spaceTip(s, opt))
       .on_click(() => opt.onSpace(s))
-      .child(div().flex_1().truncate().font_semibold().child(s.name + more));
+      .child(div().flex_1().truncate().font_semibold().child(s.keys.length ? s.keys[0] + (s.keys.length > 1 ? ` +${s.keys.length - 1}` : "") : s.name));
     // right click: move it to another floor
     if (opt.onDev) chip = chip.on_mouse_down("right", (_e, cx) => opt.onDev(s, cx));
     if (s.agents) chip = chip.child(div().flex_none().text_color(col(look ? look.color : "#c9d6e0")).child(`×${s.agents}`));
-    if (look && s.agents) {
-      // working: the dots keep typing
-      const glyph = div().flex_none().font_bold().text_color(col(look.color));
-      chip = chip.child(s.status === "working" ? glyph.w(Math.max(u(4.5), 12)).frames(["·", "··", "···"], 380).child("···") : glyph.child(look.glyph));
+    // the story's board, when Jira says: four bars, to do / in progress / review / done, each as tall as its share of the subtasks
+    const iss = s.keys.length ? opt.issues?.[s.keys[0]] : null, cols = iss?.cols, tot = cols ? cols.reduce((p, q) => p + q, 0) : 0;
+    if (tot) {
+      // as in the design: four columns, each a stack of ticks on a dark ground; the one the story is in is lit
+      const top = Math.max(...cols);
+      chip = chip.child(h_flex().flex_none().items_end().gap(u(0.7)).h(u(5)).children(cols.map((n, c) => {
+        const lit = c === iss.curCol;
+        return v_flex().w(u(1.8)).h(u(5)).justify_end().bg(col(lit ? "#3a4580" : "#1c2452"))
+          .child(div().w(u(1.8)).h(n ? Math.max(u(1.2), u(5 * n / top)) : 0).bg(col(lit ? "#ffffff" : "#94b0c2")));
+      })));
     }
-    sc.at(chip, x, y + 36);
-    if (s.keys.length) sc.at(tag(u, s.keys[0] + (s.keys.length > 1 ? ` +${s.keys.length - 1}` : "")), x, y + 6);
+    sc.at(chip, x, y + Y0 + 36);
     if (s.status === "blocked") {
       const [bw, bh] = sc.size("beacon");
       const bob = div().relative().loop("top", { from: 0, to: u(-2), period: 900 })
         .child(image(`${DIR}/sprites/beacon.png`).w(u(bw)).h(u(bh)));
-      sc.at(div().child(bob), x + BAY_W - 15, y - 4, L.TOP);   // the wrapper holds the place, the inner one bobs
+      sc.at(div().child(bob), x + BAY_W - 14, y + Y0 + 8, L.TOP);   // inside the window, top right: the wrapper holds the place, the inner one bobs
     }
+    // agents at work: a blue badge with its dots, the third of the set (waiting, working, finished)
+    if (s.status === "working" && s.agents) sc.img("beacon_work", x + BAY_W - 14, y + Y0 + 8, L.TOP);
     // finished and nobody has looked yet: a green flag, until you visit
-    if (s.status === "done") sc.anim("beacon_done", x + BAY_W - 15, y - 4, "opacity", { from: 0.55, to: 1, period: 1500 }, L.TOP);
+    if (s.status === "done") sc.anim("beacon_done", x + BAY_W - 14, y + Y0 + 8, "opacity", { from: 0.55, to: 1, period: 1500 }, L.TOP);
   }
 }

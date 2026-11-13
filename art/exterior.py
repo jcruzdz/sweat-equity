@@ -100,9 +100,12 @@ def halo(w, h, c='#ffb347'):
     im = new(w + 8, h + 8); P(im, 0, 2, w + 8, h + 4, c, 12); P(im, 2, 0, w + 4, h + 8, c, 12); P(im, 1, 1, w + 6, h + 6, c, 14); P(im, 3, 3, w + 2, h + 2, c, 30); return im
 
 # ------------------------------------------------------------------ building modules
-FLOOR_H, SIGN_X, SIGN_W, BAY_X, BAY_GAP = 46, 12, 72, 94, 8
+FLOOR_H, SIGN_X, SIGN_W, BAY_X, BAY_GAP = 58, 118, 56, 94, 8
+SLAB, SHIFT = 14, 12                           # the concrete slab on top of each floor carries the board; what used to start at 0 starts at SHIFT
+BAY_W4, BAY_XS4 = 63, [11, 80, 149, 218]      # four contiguous windows under the slab
 def bay_rects(w, n):
-    """Position and width of each window on a floor: they share the available width."""
+    """Position and width of each window on a floor. Four: contiguous, as in the approved design; else they share the width."""
+    if n == 4 and w == 292: return [(x, BAY_W4) for x in BAY_XS4]
     usable = w - BAY_X - 10; bw = (usable - BAY_GAP * (n - 1)) // n
     return [(BAY_X + j * (bw + BAY_GAP), bw) for j in range(n)]
 
@@ -221,6 +224,12 @@ def path(w, h):
 def beacon():
     """The alert above a window when an agent is waiting for an answer."""
     c = '#ffb020'; im = new(9, 10); P(im, 1, 0, 7, 8, c); P(im, 0, 1, 9, 6, c); P(im, 3, 8, 3, 1, c); P(im, 4, 9, 1, 1, c); P(im, 1, 1, 5, 1, '#ffd27a'); P(im, 4, 2, 1, 3, NAVY); P(im, 4, 6, 1, 1, NAVY)
+    return fin_navy(im)
+
+def beacon_work():
+    """The badge on a window while agents are working on it: blue, three dots."""
+    c = '#41a6f6'; im = new(9, 10); P(im, 1, 0, 7, 8, c); P(im, 0, 1, 9, 6, c); P(im, 3, 8, 3, 1, c); P(im, 4, 9, 1, 1, c); P(im, 1, 1, 5, 1, '#a9d6fb')
+    for x in (2, 4, 6): P(im, x, 4, 1, 1, NAVY)
     return fin_navy(im)
 
 def beacon_done():

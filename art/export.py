@@ -3,7 +3,7 @@ and, for the lit windows, where each person's screen and hands are. Also writes 
 Usage: python3 export.py <mod folder>"""
 import os, sys, json, random
 from core import *
-import interior as I, exterior as X, icons
+import interior as I, exterior as X, icons, graffiti_glyphs as G
 
 OUT = sys.argv[1]; os.makedirs(OUT + '/sprites', exist_ok=True)
 SIZES, SPOTS = {}, {}
@@ -44,7 +44,7 @@ def whiteboard3():
     P(im, 1, h - 4, w - 2, 1, '#e4e2dc')
     P(im, 0, h - 2, w, 2, '#8088a6'); P(im, 3, h - 2, 5, 1, '#e2532f'); P(im, 10, h - 2, 4, 1, '#3b7dd8'); P(im, w - 8, h - 2, 5, 1, '#f4f1ea')
     return fin(im)
-save('whiteboard', whiteboard3()); save('door_r', I.door('right')); save('door_l', I.door('left'))
+save('whiteboard', I.whiteboard()); save('door_r', I.door('right')); save('door_l', I.door('left'))
 for k in range(3): save(f'picture_{k}', I.picture(k)); save(f'window_{k}', I.wall_window(26, 14, True, k))
 save('clock', I.clock()); save('notice', I.notice_board())
 
@@ -69,23 +69,40 @@ def stars_tile(w=220, h=150, seed=5):
         if rnd.random() < .08: P(im, x - 1, y, 3, 1, c, 120); P(im, x, y - 1, 1, 3, c, 120)
     return im
 def facade_body(w=292):
-    """A floor module without colored lights or windows: the app adds those."""
-    im = new(w, X.FLOOR_H); FH = X.FLOOR_H
+    """A floor module without colored lights or windows: the app adds those. A concrete slab on top carries the painted board."""
+    FH, SH = X.FLOOR_H, X.SHIFT
+    im = new(w, FH)
     P(im, 0, 0, w, FH, X.BODY)
-    for x in range(8, w, 14): P(im, x, 4, 1, FH - 7, '#272c41')
-    P(im, 0, 0, w, 2, X.BODY_HI); P(im, 0, 0, w, 1, '#5d668c'); P(im, 0, 2, w, 2, X.BODY_LO); P(im, 0, FH - 2, w, 2, X.BODY_LO)
-    P(im, X.SIGN_X, 7, X.SIGN_W, 31, X.FRAME); P(im, X.SIGN_X + 1, 8, X.SIGN_W - 2, 29, '#0f1328'); P(im, X.SIGN_X + 1, 8, X.SIGN_W - 2, 1, '#1a2040')
-    for (x, bw) in X.bay_rects(w, 3):
-        P(im, x - 4, 5, 1, 38, '#3f4763'); P(im, x - 3, 5, 1, 38, '#232840')
-        P(im, x, 36, bw, 7, '#161a2e'); P(im, x, 36, bw, 1, X.FRAME)
+    for x in range(8, w, 14): P(im, x, SH + 4, 1, FH - SH - 7, '#272c41')
+    P(im, 0, FH - 2, w, 2, X.BODY_LO)
+    # the slab between levels: where the sign lives (approved design: a band, sign inside, never behind the chips)
+    P(im, 0, 0, w, X.SLAB, '#39415f'); P(im, 0, 0, w, 1, '#5a6488'); P(im, 0, X.SLAB - 1, w, 1, '#141a30')
+    bx, by, bw_, bh = X.SIGN_X, 2, X.SIGN_W, 11
+    P(im, bx - 1, by - 1, bw_ + 2, bh + 2, '#2e1c12'); P(im, bx, by, bw_, bh, '#6b4430')
+    P(im, bx, by, bw_, 1, '#8a5a3c'); P(im, bx, by + bh - 1, bw_, 1, '#4a2f20')
+    for dx, dy in ((2, 2), (bw_ - 3, 2), (2, bh - 3), (bw_ - 3, bh - 3)): P(im, bx + dx, by + dy, 1, 1, '#b9a98f')
+    for (x, bw) in X.bay_rects(w, 4):
+        P(im, x - 4, SH + 5, 1, 38, '#3f4763'); P(im, x - 3, SH + 5, 1, 38, '#232840')
+        P(im, x, SH + 36, bw, 7, '#161a2e'); P(im, x, SH + 36, bw, 1, X.FRAME)
+    return im
+def letter_outline(ch):
+    """A letter's dark outline and red shadow in their real colors (an svg can only carry one ink)."""
+    im = new(10, 10)
+    fill = {(1 + x, 1 + y) for y, r in enumerate(G.F[ch].split('/')) for x, c in enumerate(r) if c == '#'}
+    dark = {(a + i, b + j) for a, b in fill for i in (-1, 0, 1) for j in (-1, 0, 1)}
+    for (x, y) in {(a + 1, b + 1) for a, b in dark} - dark:
+        if x < 10 and y < 10: P(im, x, y, 1, 1, '#b13e53')
+    for (x, y) in dark: P(im, x, y, 1, 1, '#0a0e2c')
     return im
 save('stars', stars_tile(), 3); save('moon', X.moon()); save('skyline', X.skyline(220, 96, 2), 3); save('ground', X.ground(220, 24), 3)
 for k in range(4): save(f'cloud_{k}', X.cloud([50, 62, 40, 44][k], k + 1), 3)
-save('roof', X.roof(292)); save('lobby', X.lobby(292)); save('floor_body', facade_body()); save('halo', X.halo(58, 28))
+save('roof', X.roof(292)); save('lobby', X.lobby(292)); save('floor_body', facade_body()); save('halo', X.halo(63, 28))
 for n in (1, 2, 3):
-    for v in range(4): save(f'win_lit_{n}_{v}', X.window_lit(n * 11 + v * 5 + 1, n, 58))
-for v in range(3): save(f'win_dark_{v}', X.window_dark(v, 58))
-save('beacon', X.beacon()); save('beacon_done', X.beacon_done()); save('lamp_post', X.lamp_post()); save('lamp_glow', X.lamp_glow(), 3); save('bench_out', X.bench_out()); save('path', X.path(96, 24))
+    for v in range(4): save(f'win_lit_{n}_{v}', X.window_lit(n * 11 + v * 5 + 1, n, 63))
+for v in range(3): save(f'win_dark_{v}', X.window_dark(v, 63))
+for ch in G.F:
+    if G.F[ch]: save('go_' + G.NAMES.get(ch, ch), letter_outline(ch))
+save('beacon', X.beacon()); save('beacon_done', X.beacon_done()); save('beacon_work', X.beacon_work()); save('lamp_post', X.lamp_post()); save('lamp_glow', X.lamp_glow(), 3); save('bench_out', X.bench_out()); save('path', X.path(96, 24))
 for k in range(4): save(f'tree_{k}', X.tree(k + 1))
 for k in range(6): save(f'hedge_{k}', X.hedge(26, k))
 

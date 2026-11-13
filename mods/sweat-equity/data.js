@@ -25,9 +25,9 @@ export const TEXT = {
     doneOne: "agent finished", doneMany: "agents finished", jiraTickets: "tickets",
     newBtn: "+ new", newIn: "New in", where: "WHERE", who: "WITH", first: "FIRST MESSAGE (OPTIONAL)", start: "Start", cancel: "Cancel", wsFolder: "workspace folder",
     addsTab: "open: adds a tab", newSpace: "new space", scanning: "Looking for repositories…", missing: "This folder does not exist on this computer", terminal: "Terminal only",
-    editFloor: "Edit floor", nameLabel: "Name", rename: "Rename", colorLabel: "Color", folderLabel: "Folder", change: "Change…", hideFloor: "Hide this floor", showFloor: "Show this floor again", ghost: "Hidden", peekOn: "Show hidden floors", peekOff: "Hide them again",
+    editFloor: "Edit floor", nameLabel: "Name", rename: "Rename", colorLabel: "Color", folderLabel: "Folder", change: "Change…", hideFloor: "Hide this floor", showFloor: "Show this floor again", ghost: "Hidden", peekOn: "Show hidden floors", peekNone: "Nothing hidden", peekHint: "the eye on a floor hides it", peekOff: "Hide them again",
     removeFloor: "Remove floor", sure: "Remove it for good", goSpace: "Go to the space", moveTo: "Move to", sendTo: "Send to", noFloor: "Leave without a floor", auto: "Back to automatic",
-    ownFloor: "A floor of its own, from its folder", outside: "no floor", team: "Team", inLounge: "In the lounge", enterHint: "Enter starts · Esc closes the tower", jira401: "Jira: 401, check the email and the token in the keychain",
+    ownFloor: "A floor of its own, from its folder", outside: "no floor", team: "Team", inLounge: "In the lounge", enterHint: "Enter starts · Esc closes the tower", colNames: ["TO DO", "DOING", "REVIEW", "DONE"], subsOf: "{d} of {n} subtasks", waitsYou: "{who} is waiting for you", reply: "Reply", noSubs: "no subtasks", openJira: "Open in Jira", noBoard: "No Jira data for this story yet", squad: "Squad", board: "Board", jira401: "Jira: 401, check the email and the token in the keychain",
     jiraNoKeys: "Jira connected · no branch carries a ticket key yet (like feature/ABC-12-name)",
   },
   es: {
@@ -39,17 +39,34 @@ export const TEXT = {
     doneOne: "agente terminó", doneMany: "agentes terminaron", jiraTickets: "US",
     newBtn: "+ nuevo", newIn: "Nuevo en", where: "DÓNDE", who: "CON QUIÉN", first: "PRIMER MENSAJE (OPCIONAL)", start: "Iniciar", cancel: "Cancelar", wsFolder: "carpeta del workspace",
     addsTab: "abierto: se suma una pestaña", newSpace: "space nuevo", scanning: "Buscando repositorios…", missing: "Esta carpeta no existe en esta computadora", terminal: "Terminal sola",
-    editFloor: "Editar piso", nameLabel: "Nombre", rename: "Renombrar", colorLabel: "Color", folderLabel: "Carpeta", change: "Cambiar…", hideFloor: "Ocultar este piso", showFloor: "Volver a mostrar este piso", ghost: "Oculto", peekOn: "Ver pisos ocultos", peekOff: "Volver a ocultarlos",
+    editFloor: "Editar piso", nameLabel: "Nombre", rename: "Renombrar", colorLabel: "Color", folderLabel: "Carpeta", change: "Cambiar…", hideFloor: "Ocultar este piso", showFloor: "Volver a mostrar este piso", ghost: "Oculto", peekOn: "Ver pisos ocultos", peekNone: "Nada oculto", peekHint: "el ojo de cada piso lo oculta", peekOff: "Volver a ocultarlos",
     removeFloor: "Quitar piso", sure: "Quitarlo de verdad", goSpace: "Ir al space", moveTo: "Mover a", sendTo: "Mandar a", noFloor: "Dejar sin piso", auto: "Volver a automático",
-    ownFloor: "Piso propio, con su carpeta", outside: "sin piso", team: "Equipo", inLounge: "En la sala", enterHint: "Enter inicia · Esc cierra el edificio", jira401: "Jira: 401, revisa el correo y el token del llavero",
+    ownFloor: "Piso propio, con su carpeta", outside: "sin piso", team: "Equipo", inLounge: "En la sala", enterHint: "Enter inicia · Esc cierra el edificio", colNames: ["HACER", "CURSO", "REVIEW", "HECHO"], subsOf: "{d} de {n} subtareas", waitsYou: "{who} te espera", reply: "Responder", noSubs: "sin subtareas", openJira: "Abrir en Jira", noBoard: "Aún no hay datos de Jira para esta US", squad: "Escuadrón", board: "Tablero", jira401: "Jira: 401, revisa el correo y el token del llavero",
     jiraNoKeys: "Jira conectado · ninguna rama trae clave de US todavía (como feature/ABC-12-nombre)",
   },
 };
 
+const STRICT = /\b[A-Z][A-Z0-9]+-\d+\b/;
+// Words that look like ticket keys and are not (UTF-8, SHA-1, ISO-8601...). With `projects` in the config, only those prefixes count.
+const NOT_TICKETS = new Set(["UTF", "SHA", "ISO", "RFC", "HTTP", "HTTPS", "TLS", "SSL", "AES", "MD", "CVE", "COVID", "X", "X86", "IPV", "TCP", "UDP", "CRC", "RSA", "SQL", "WIN", "MAC", "IOS", "ES", "PEP", "GPT"]);
+let ALLOWED = null;
+/** The Jira project prefixes that count as tickets (`projects` in the config), or none for any prefix but the known false ones. */
+export function allowProjects(list) { ALLOWED = Array.isArray(list) && list.length ? new Set(list.map((x) => String(x).toUpperCase())) : null; }
+function validKey(key) {
+  const prefix = key.slice(0, key.lastIndexOf("-")).toUpperCase();
+  return ALLOWED ? ALLOWED.has(prefix) : !NOT_TICKETS.has(prefix);
+}
+/** A ticket key written in capitals inside any text (a terminal title, a worktree folder): stricter than a branch, so `utf-8` is not one. */
+function strictTicket(s) {
+  const m = s ? STRICT.exec(String(s)) : null;
+  return m && validKey(m[0]) ? m[0] : null;
+}
+
 /** The ticket a branch works on: `feature/TEL-142-validate-pin` -> `TEL-142`. */
 export function ticketOf(branch) {
   const m = branch ? TICKET.exec(branch) : null;
-  return m ? m[0].toUpperCase() : null;
+  const key = m ? m[0].toUpperCase() : null;
+  return key && validKey(key) ? key : null;
 }
 
 // Home folders differ by machine and by user (`/Users/ana`, `/home/ana`, `/root`). Paths are
@@ -150,8 +167,10 @@ export function liveTower(st, showHidden = false) {
     const mine = allPanes.filter((p) => tabs.has(p.tab));
     const cwds = mine.map((p) => p.cwd).filter(Boolean);
     const folders = s.folder ? [...cwds, s.folder] : cwds;
-    const keys = [...new Set([...mine.map((p) => ticketOf(p.branch)), ticketOf(s.branch)].filter(Boolean))];
     const list = allAgents.filter((a) => a.space === s.id);
+    // the tickets of a development: its branches first, then what its terminals' titles and folders say in capitals (an agent
+    // told "US RBWEB-2484 ..." works on that story even when the branch is `main`), the same rule the rooms use
+    const keys = [...new Set([...mine.map((p) => ticketOf(p.branch)), ticketOf(s.branch), ...list.map((a) => strictTicket(a.title)), ...mine.map((p) => strictTicket(p.cwd))].filter(Boolean))];
     const machine = s.machine ?? null;
     const name = machine ? `${s.name}@${shortMachine(machine)}` : s.name;
     const branches = [...new Set([...mine.map((p) => p.branch), s.branch].filter(Boolean))];
@@ -192,7 +211,9 @@ export function liveOffice(floor, issues, t, crew = {}) {
   const word = (s) => (s === "error" ? "blocked" : s === "working" || s === "blocked" ? s : "idle");
   // everyone is a coworker with a job and a task; helpers sit with the agent that started them
   const people = floor.spaces.flatMap((d) => d.list.flatMap((a) => {
-    const key = ticketOf(paneOf.get(a.pane)?.branch);
+    // the ticket an agent is on: its branch, else what its terminal title or folder says, else the one ticket its development has
+    const pn = paneOf.get(a.pane);
+    const key = ticketOf(pn?.branch) ?? strictTicket(a.title) ?? strictTicket(pn?.cwd) ?? (d.keys.length === 1 ? d.keys[0] : null);
     const lead = { id: a.address, address: a.address, state: a.status, persona: hash(a.address), name: d.list.length > 1 ? `${d.name} ${a.tab_name}` : d.name,
       role: a.program?.name ?? "", doing: telling(a.title, a.program), meta: "", key, sub: false, lead: false };
     // helpers: terminals this agent started through Herdr, and the ones it lists on its own screen
@@ -210,7 +231,7 @@ export function liveOffice(floor, issues, t, crew = {}) {
   /** @type {any[]} */
   const rooms = [...byKey.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map((key) => {
     const list = byKey.get(key), issue = issues[key];
-    return { key, title: issue?.summary ?? "", statusText: issue?.status ?? "", counts: issue?.counts ?? null, cur: issue?.cur ?? -1, agents: list, more: Math.max(0, list.length - SEATS) };
+    return { key, title: issue?.summary ?? "", statusText: issue?.status ?? "", counts: issue?.counts ?? null, cols: issue?.cols ?? null, curCol: issue?.curCol ?? -1, cur: issue?.cur ?? -1, agents: list, more: Math.max(0, list.length - SEATS) };
   });
   const general = people.filter((p) => !p.key && (p.state === "working" || p.state === "blocked" || p.sub));
   if (general.length) rooms.push({ key: t.general, title: t.generalTitle, statusText: "", counts: null, cur: -1, agents: general, more: Math.max(0, general.length - SEATS), general: true });
@@ -235,15 +256,15 @@ export function demoTower() {
 }
 
 export function demoOffice(floor, t) {
-  const room = (key, title, statusText, counts, cur, list) => ({ key, title, statusText, counts, cur, agents: list, more: 0 });
+  const room = (key, title, statusText, counts, cur, list, cols = [counts[0], counts[1], 0, counts[2]], curCol = cur === 2 ? 3 : cur) => ({ key, title, statusText, counts, cols, curCol, cur, agents: list, more: 0 });
   return {
     name: floor.name, color: floor.color,
     rooms: [
       room("APP-142", "Validate the PIN on number transfer", "In progress", [1, 2, 2], 1, [demoAgent("a1", "qa", "blocked"), demoAgent("a2", "backend", "working"), demoAgent("a3", "mobile-app", "working"), demoAgent("a4", "docs", "done")]),
-      room("APP-151", "Top up with a saved card", "In review", [0, 3, 3], 1, [demoAgent("a5", "backend", "done"), demoAgent("a6", "mobile-app", "working"), demoAgent("a7", "qa", "working")]),
+      room("APP-151", "Top up with a saved card", "In review", [0, 3, 3], 1, [demoAgent("a5", "backend", "done"), demoAgent("a6", "mobile-app", "working"), demoAgent("a7", "qa", "working")], [0, 1, 2, 3], 2),
       room("APP-158", "eSIM activation", "To do", [4, 0, 0], 0, [demoAgent("a8", "backend", "blocked"), demoAgent("a9", "infra", "idle")]),
     ],
-    lounge: [demoAgent("a9", "infra", "idle"), demoAgent("a10", "web", "idle"), demoAgent("a11", "tools", "done")],
+    lounge: [demoAgent("a9", "infra", "idle"), demoAgent("a10", "web", "idle"), demoAgent("a11", "tools", "done"), demoAgent("a12", "ops", "idle"), demoAgent("a13", "design", "idle")],
   };
 }
 
@@ -252,7 +273,7 @@ export function demoOffice(floor, t) {
 export class Jira {
   constructor() {
     this.auth = null;
-    /** @type {Record<string, { status: string, summary: string, counts: number[], cur: number } | null>} */
+    /** @type {Record<string, { status: string, summary: string, counts: number[], cols: number[], cur: number, curCol: number, solo?: boolean, subs: { key: string, summary: string, status: string, col: number }[] } | null>} */
     this.issues = {};
     this.note = "";
   }
@@ -284,8 +305,10 @@ export class Jira {
       }
       const CAT = { new: 0, indeterminate: 1, done: 2 };
       let found = 0;
+      for (const k of Object.keys(this.issues)) if (!keys.includes(k)) delete this.issues[k];   // stories that left the tower
       for (const key of keys) {
         const r = await fetch(`${host}/rest/api/3/issue/${key}?fields=status,summary,subtasks`, { headers });
+        if (r.status === 429) { this.note = `Jira: HTTP 429`; return; }   // rate limited: try again next round
         if (r.status === 401) { this.auth = null; this.note = t.jira401; return; }
         if (r.status === 404) { this.issues[key] = null; continue; }
         if (!r.ok) continue;
@@ -293,10 +316,23 @@ export class Jira {
         const j = await r.json();
         const cur = CAT[j.fields?.status?.statusCategory?.key] ?? -1;
         const counts = [0, 0, 0];
+        // the board has four columns: to do, in progress, review, done. Jira only has three categories, so "review" is told by the status name.
+        const cols = [0, 0, 0, 0], REVIEW = /review|revis|qa\b|test|valid|verif/i;
         const subs = j.fields?.subtasks ?? [];
-        subs.forEach((s) => { const c = CAT[s.fields?.status?.statusCategory?.key]; if (c !== undefined) counts[c]++; });
-        if (!subs.length && cur >= 0) counts[cur] = 1;
-        this.issues[key] = { status: j.fields?.status?.name ?? "", summary: j.fields?.summary ?? "", counts, cur };
+        const place = (f) => {
+          const c = CAT[f?.status?.statusCategory?.key];
+          if (c === undefined) return -1;
+          counts[c]++;
+          const k = c === 2 ? 3 : c === 1 && REVIEW.test(f.status.name ?? "") ? 2 : c;
+          cols[k]++;
+          return k;
+        };
+        /** each subtask with its column, for the board panel */
+        const list = subs.map((s) => ({ key: s.key, summary: s.fields?.summary ?? "", status: s.fields?.status?.name ?? "", col: place(s.fields) })).filter((s) => s.col >= 0);
+        const solo = !subs.length;
+        if (solo) list.push({ key, summary: j.fields?.summary ?? "", status: j.fields?.status?.name ?? "", col: place(j.fields) });
+        const curCol = cur === 2 ? 3 : cur === 1 && REVIEW.test(j.fields?.status?.name ?? "") ? 2 : cur;
+        this.issues[key] = { status: j.fields?.status?.name ?? "", summary: j.fields?.summary ?? "", counts, cols, cur, curCol, solo, subs: list.filter((s) => s.col >= 0) };
         found++;
       }
       this.note = `Jira: ${found}/${keys.length} ${t.jiraTickets}`;

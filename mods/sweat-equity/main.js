@@ -10,12 +10,12 @@ import { View, div, svg, image } from "gpui-kit";
 import { h_flex, v_flex, InputState, Input } from "gpui-base";
 import { props, run, closeOverlay, pickFolder, exec, theme, spaces, knownAgents, hc, shared, window as appWindow } from "herdr";
 import { Scene, INK, ALERT, STATUS, col } from "./scene.js";
-import { buildFacade, facadeScale } from "./facade.js";
+import { buildFacade, facadeScale, stackOf } from "./facade.js";
 import { buildOffice, officeFit } from "./office.js";
-import { TEXT, COLORS, loadConfig, loadState, saveState, liveTower, liveOffice, demoTower, demoOffice, Jira, writeDebug, fromHome, toAbs, findRepos, parseCrew } from "./data.js";
+import { TEXT, COLORS, loadConfig, loadState, saveState, liveTower, liveOffice, demoTower, demoOffice, Jira, writeDebug, fromHome, toAbs, findRepos, parseCrew, allowProjects } from "./data.js";
 
 const BAR_H = 44, FOOT_H = 26, ROSTER_W = 312, ROSTER_H = 236;
-const VERSION = "1.3.0";
+const VERSION = "1.4.0-dev";
 const PANEL = "#0f1436", LINE = "#56608f", SOFT = "#c9d6e0", DIM = "#94b0c2", PAPER = "#f4f4f8", PICK = "#1c2452", CLEAR = "#00000000";
 
 export default class SweatEquity extends View {
@@ -109,9 +109,10 @@ export default class SweatEquity extends View {
     if (overlay) closeOverlay(overlay);
   }
 
-  openIssue(room) {
-    if (!this.cfg.jira || room.general) return;
-    const url = `${String(this.cfg.jira).replace(/\/+$/, "")}/browse/${room.key}`;
+  /** Opens a Jira key in the browser. */
+  openKey(key) {
+    if (!this.cfg.jira || !/^https:\/\//.test(String(this.cfg.jira)) || !/^[A-Za-z][A-Za-z0-9]+-\d+$/.test(String(key))) return;
+    const url = `${String(this.cfg.jira).replace(/\/+$/, "")}/browse/${key}`;
     const os = appWindow()?.platform;
     if (os === "macos") exec("open", [url]);
     else if (os === "windows") exec("cmd", ["/c", "start", "", url]);
@@ -302,6 +303,49 @@ export default class SweatEquity extends View {
     const close = (_e, cx) => this.closePanel(cx);
     const foot = (extra = []) => h_flex().pt(8).gap(8).items_center().children(extra).child(div().flex_1()).child(this.button("se-panel-close", t.cancel, false, close));
 
+    if (P.kind === "issue") {
+      // the story's board, as designed: key and state, "N of M subtasks", the title, then four columns of post-its
+      const R = office?.rooms?.find((r) => r.key === P.key);
+      if (!R) { this.panel = null; return null; }
+      // Jira's data when there is some; otherwise what the room already knows (the sample, or the counts it carried)
+      const iss = this.jira.issues[R.key] ?? (R.cols ? { status: R.statusText, summary: R.title, cols: R.cols, curCol: R.curCol, solo: false, subs: [] } : null), names = t.colNames;
+      const POSTIT = ["#f6e7a6", "#ffd7b0", "#dccbff", "#bdeccc"], TOP = (c) => (c === iss?.curCol ? "#e2532f" : LINE);
+      const total = iss ? iss.cols.reduce((p, q) => p + q, 0) : 0;
+      const head = v_flex().gap(4)
+        .child(h_flex().gap(8).items_center().text_size(11.5)
+          .child(div().font_bold().text_color(col("#ffb08a")).child(R.key))
+          .child(div().px(8).py(1).rounded(10).border(1).border_color(col(LINE)).text_color(col(SOFT)).child(`Jira · ${iss?.status ?? "…"}`))
+          .child(div().text_color(col(DIM)).child(iss ? (iss.solo ? t.noSubs : t.subsOf.replace("{d}", String(iss.cols[3])).replace("{n}", String(total))) : (this.jira.note || t.noBoard))))
+        .child(div().text_size(16).font_bold().text_color(col(PAPER)).child(iss?.summary || R.title || R.key));
+      const board = h_flex().gap(6).items_start().children(names.map((nm, c) => {
+        const list = iss ? iss.subs.filter((s) => s.col === c) : [];
+        return v_flex().flex_1().min_w(0).gap(6).p(6).rounded(6).bg(col(PICK)).border_t(3).border_color(col(TOP(c)))
+          .child(div().text_size(11).font_bold().text_color(col(PAPER)).child(`${nm} `).child(div().text_color(col(DIM)).font_normal().child(String(list.length))))
+          .children(list.map((s, i) => v_flex().id(`se-sub-${c}-${i}`).gap(3).p(7).rounded(3).bg(col(POSTIT[c])).cursor_pointer()
+            .hover((x) => x.opacity(0.85)).tooltip(`${s.key} · ${s.summary}\n${s.status}`)
+            .on_click(() => this.openKey(s.key))
+            .child(div().text_size(11.5).font_semibold().text_color(col(INK)).child(s.summary))
+            .child(div().text_size(9.5).text_color(col("#5c6078")).child(s.key))));
+      }));
+      // the squad: who is on it; whoever waits for you gets a banner with the way to answer
+      const waiting = R.agents.filter((a) => a.state === "blocked");
+      const squad = h_flex().gap(6).flex_wrap().children(R.agents.map((a, i) => h_flex().id(`se-sq-${i}`).gap(6).px(8).h(24).items_center().rounded(5).bg(col(PICK)).cursor_pointer()
+        .border(1).border_color(col(STATUS[a.state]?.color ?? LINE)).tooltip(a.doing || a.name).text_size(11.5).text_color(col(PAPER))
+        .on_click(() => { this.panel = null; this.go("agent.focus", { terminal: a.address }); })
+        .child(div().flex_none().w(8).h(8).rounded(4).bg(col(STATUS[a.state]?.color ?? DIM)))
+        .child(div().truncate().max_w(170).child(a.name))));
+      const banners = waiting.map((a, i) => h_flex().id(`se-wait-${i}`).gap(10).items_center().pl(12).pr(6).py(6).rounded(8).border(2).border_color(col("#ffb020")).bg(col("#3a2a10"))
+        .child(div().flex_none().w(10).h(10).rounded(5).bg(col("#ffb020")))
+        .child(div().flex_1().min_w(0).truncate().text_size(12).text_color(col(PAPER)).child(t.waitsYou.replace("{who}", a.name)))
+        .child(this.button(`se-reply-${i}`, t.reply, true, () => { this.panel = null; this.go("agent.focus", { terminal: a.address }); })));
+      const open = this.cfg.jira ? [this.button("se-open-jira", t.openJira, true, () => this.openKey(R.key))] : [];
+      const bodyH = Math.max(160, this.size.height - BAR_H - FOOT_H - 150);
+      return v_flex().id("se-panel-issue").w(Math.min(760, this.size.width - 24)).max_h(this.size.height - BAR_H - FOOT_H - 24).p(14).gap(10).rounded(9).bg(col(PANEL)).border(1).border_color(col(LINE))
+        .child(head)
+        .child(v_flex().id("se-issue-body").gap(10).max_h(bodyH).overflow_y_scroll().child(board).child(this.section(`${t.squad} (${R.agents.length})`)).child(squad).children(banners))
+        .child(foot(open));
+    }
+
     if (P.kind === "dev") {
       const d = [...tower.floors.flatMap((f) => f.spaces), ...tower.loose].find((x) => x.id === P.id);
       if (!d) { this.panel = null; return null; }
@@ -435,6 +479,7 @@ export default class SweatEquity extends View {
       return div().id("se-root").size_full().bg(col(INK)).on_size_change((size, cx) => { this.size = size; cx.notify(); });
     }
     const t = this.t(), st = loadState(this.cfg);
+    allowProjects(this.cfg.projects);
     const tower = st.demo ? demoTower() : liveTower(st, this.peek);
     if (!tower.hiddenN) this.peek = false;      // nothing is hidden any more: back to the plain tower
     const floor = tower.floors.find((f) => f.name === this.view && !f.hidden) ?? null;
@@ -468,17 +513,17 @@ export default class SweatEquity extends View {
       buildOffice(sc, fit, office, {
         t, spot: talking.length ? talking[this.spot % talking.length].id : null,
         onAgent: focus,
-        onIssue: act((room) => { if (live) this.openIssue(room); }),
+        onIssue: !tools ? null : act((room, cx) => { if (!room.general) { this.panel = { kind: "issue", key: room.key }; cx?.notify?.(); } }),
         onNew: tools ? act((cx) => this.openNew(floor.name, cx)) : null,
       });
       sceneW = fit.w * k; sceneH = fit.h * k;
       if (dock) list = this.roster(t, office, side ? ROSTER_W : Math.max(sceneW, 320), side ? Math.max(200, Math.min(sceneH, stageH - 16)) : ROSTER_H, focus);
     } else {
       const available = !st.presenting && live;
-      k = facadeScale(stageW, stageH, tower.floors.length + (available ? 1 : 0));
+      k = facadeScale(stageW, stageH, stackOf(tower.floors).length + (available ? 1 : 0));
       sc = new Scene((n) => n * k);
       buildFacade(sc, { W: stageW / k, H: stageH / k }, { floors: tower.floors, available, waiting: tower.waiting.length, finished: tower.finished.length, loose: tools ? tower.loose : [], hiddenN: tower.hiddenN }, {
-        t, peek: this.peek,
+        t, peek: this.peek, issues: this.jira.issues,
         onPeek: live ? act((cx) => { this.peek = !this.peek; cx.notify(); }) : null,
         onEnter: act((name, cx) => {
           this.view = name; this.spot = 0; cx.notify();
@@ -495,7 +540,7 @@ export default class SweatEquity extends View {
       });
     }
     const now = Date.now();
-    const sig = [k, this.view, st.demo, st.presenting, this.peek, st.hidden.join(","), this.size.width, this.size.height, sc.items.length, this.jira.note, this.panel?.kind, this.outer?.width, this.outer?.height].join("|");
+    const sig = [k, this.view, st.demo, st.presenting, this.peek, st.hidden.join(","), this.size.width, this.size.height, sc.items.length, this.jira.note, Object.values(this.jira.issues).map((i) => i?.cols?.join(".") ?? "-").join(","), this.panel?.kind, this.outer?.width, this.outer?.height].join("|");
     if (sig !== this.lastSig || now - this.lastDebug > 5000) {
       this.lastDebug = now;
       this.lastSig = sig;
