@@ -106,13 +106,20 @@ function room(sc, opt, x0, y0, R, i) {
   // whiteboard: ticket and status on the title strip, one dark card per subtask
   const wx = x0 + 43;
   sc.img("whiteboard", wx, y0 + 5, L.OBJ, y0 + 31);
-  if (R.cur >= 0) sc.box(wx + 2 + R.cur * 17, y0 + 12, 16, 9, "#cfe0ff", L.OBJ, y0 + 32);
-  (R.counts ?? []).forEach((n, c) => {
-    for (let k = 0; k < Math.min(n, 9); k++) sc.box(wx + 4 + c * 17 + (k % 3) * 4, y0 + 13 + Math.floor(k / 3) * 3, 3, 2, "#3d4463", L.OBJ, y0 + 33);
+  // four columns as in the design: to do, in progress, review, done. The one the story is in is tinted; one tick per subtask
+  const cw = 12;
+  if (R.curCol >= 0) sc.box(wx + 3 + R.curCol * cw, y0 + 12, cw - 1, 10, "#ffe2a8", L.OBJ, y0 + 32);
+  (R.cols ?? []).forEach((n, c) => {
+    for (let k = 0; k < Math.min(n, 9); k++) sc.box(wx + 4 + c * cw + (k % 3) * 3, y0 + 14 + Math.floor(k / 3) * 3, 2, 2, c === R.curCol ? "#23263a" : "#8a8fa3", L.OBJ, y0 + 33);
   });
+  // the whole board is a button, not only its title strip: it opens the story's board
+  if (!R.general) {
+    const [bw, bh] = sc.size("whiteboard");
+    sc.at(div().id(`se-boardhit-${R.key}`).w(u(bw)).h(u(bh)).cursor_pointer().tooltip([R.title ? `${R.key} · ${R.title}` : R.key, R.cols ? R.cols.map((n, c) => `${opt.t.colNames[c]} ${n}`).join(" · ") : ""].filter(Boolean).join("\n")).on_click((_e, cx) => opt.onIssue(R, cx)), wx, y0 + 5);
+  }
   const title = h_flex().id(`se-board-${R.key}`).w(u(50)).h(u(5)).px(u(1.5)).items_center().cursor_pointer().tooltip(R.title || R.key)
     .text_size(fpx(u, 3.5, 8.5)).font_bold().text_color(col("#23263a"))
-    .on_click(() => opt.onIssue(R))
+    .on_click((_e, cx) => opt.onIssue(R, cx))
     .child(div().truncate().child(R.statusText ? `${R.key} · ${R.statusText}` : R.key));
   sc.at(title, wx + 2, y0 + 6);
 
@@ -144,10 +151,16 @@ function room(sc, opt, x0, y0, R, i) {
   sc.box(x0 + 44, y0 + 163, 72, 1, "#3d4463", L.OBJ, y0 + 185);
   const plaque = h_flex().id(`se-plaque-${R.key}`).w(u(72)).h(u(8)).px(u(2.5)).gap(u(2)).items_center().cursor_pointer().tooltip(R.title || R.key)
     .text_size(fpx(u, 3.9, 9.5)).text_color(col("#ffffff"))
-    .on_click(() => opt.onIssue(R))
+    .on_click((_e, cx) => opt.onIssue(R, cx))
     .child(div().flex_none().font_bold().child(R.key))
     .child(div().truncate().child(R.title || t.noTitle));
   sc.at(plaque, x0 + 44, y0 + 163);
+}
+
+/** The character itself is a button too: a click goes to that agent's chat, like its label does. */
+function hit(sc, opt, a, x, y, w, h) {
+  const u = sc.u;
+  sc.at(div().id(`se-hit-${a.id}-${x}-${y}`).w(u(w)).h(u(h)).cursor_pointer().tooltip(a.doing ? `${a.name} · ${a.doing}` : a.name).on_click(() => opt.onAgent(a)), x, y, L.UI);
 }
 
 /** A coworker's label: two lines when they say what they are on (and the bubble on their turn), else the plain pill. */
@@ -189,6 +202,7 @@ function backSeat(sc, opt, cx, dy, a, bubbleX, bubbleY) {
   else sc.img(`p${a.persona % PEOPLE}_sitb`, cx - 9, dy + 4, L.OBJ, dy + 30);
   sc.img("chair", cx - 7, dy + 19, L.OBJ, dy + 33);
   marks(sc, a, bubbleX, bubbleY, cx + 9, dy - 7);
+  hit(sc, opt, a, cx - 9, dy + 2, 18, 32);
   label(sc, opt, a, cx, dy + 36, false);
 }
 
@@ -221,6 +235,7 @@ function pod(sc, opt, px, py, north, south, seed) {
     if (north.state === "working") sc.anim(`p${north.persona % PEOPLE}_sitf`, cx - 9, py - 21, "top", { from: 0, to: sc.u(1), period: 400 + (north.persona % 4) * 40 }, L.OBJ, py - 2);
     else sc.img(`p${north.persona % PEOPLE}_sitf`, cx - 9, py - 21, L.OBJ, py - 2);
     marks(sc, north, cx + 6, py - 22, cx + 8, py - 20);
+    hit(sc, opt, north, cx - 9, py - 22, 18, 22);
     label(sc, opt, north, cx, py - 30, true);
   }
   sc.img("desk", px, py, L.OBJ, py + 10);
@@ -259,6 +274,29 @@ function spareRoom(sc, opt, x0, y0, i) {
   sc.box(x0, y0 + 4, ROOM_W, 146, "#1c245242", L.TOP, y0 + 150);
 }
 
+/** How far an idle agent standing in the common row strolls (art px, + right, - left), by seat; the sofa seats stay put. */
+const WALK = { 2: 40, 3: 18, 4: 40, 5: -26 };
+
+/**
+ * An idle agent does not sit still in the common row: it strolls back and forth along its stretch of floor, label and
+ * all. The two moving pieces (the person, the label) share one period and one clock, so they stay together.
+ */
+function wander(sc, opt, a, x, y, lx, ly, range) {
+  const u = sc.u, name = `p${a.persona % PEOPLE}_front`, [w, h] = sc.size(name);
+  const period = 7000 + (a.persona % 5) * 900, policy = { from: 0, to: u(range), period };
+  // everything sits inside a box that starts 11 px above the head, so the Zzz needs no negative offset
+  const body = div().relative().w(u(w + 12)).h(u(h + 11)).loop("left", policy)
+    .child(div().absolute().left(u(1)).top(u(h + 8)).w(u(12)).h(u(3)).rounded(u(1.5)).bg(col(NAVY + "40")))
+    .child(sc.sprite(name).absolute().left(0).top(u(11)))
+    .child(sc.sprite("zzz").absolute().left(u(11)).top(0))
+    .child(div().id(`se-hit-${a.id}-${x}-${y}`).absolute().left(u(-1)).top(u(9)).w(u(16)).h(u(20)).cursor_pointer()
+      .tooltip(a.doing ? `${a.name} · ${a.doing}` : a.name).on_click(() => opt.onAgent(a)));
+  sc.add(div().absolute().left(u(x)).top(u(y - 11)).w(u(w + 12)).h(u(h + 11)).child(body), L.OBJ, y + h);
+  const tag = div().relative().w(u(36)).h(Math.max(u(7), 15)).loop("left", policy)
+    .child(h_flex().absolute().left(0).top(0).w(u(36)).justify_center().child(pill(u, `se-agent-${a.id}`, a.name, a.state, 34, () => opt.onAgent(a))));
+  sc.add(div().absolute().left(u(lx - 18)).top(u(ly)).w(u(36)).h(Math.max(u(7), 15)).child(tag), L.UI, 0);
+}
+
 /** The common row: kitchenette against a wall, sofa area open to the corridor, a spare room if there is width. */
 function lounge(sc, opt, model, yL, W, H) {
   const u = sc.u, t = opt.t;
@@ -295,8 +333,10 @@ function lounge(sc, opt, model, yL, W, H) {
   const seats = [[174, 31, 182, 60], [194, 31, 202, 23], [54, 42, 62, 67], [104, 40, 112, 65], [20, 70, 28, 95], [238, 62, 246, 87]];
   model.lounge.slice(0, seats.length).forEach((a, k) => {
     const [x, y, lx, ly] = seats[k], sofa = k < 2;
+    if (!sofa && a.state === "idle" && WALK[k]) { wander(sc, opt, a, x, yL + y, lx, yL + ly, WALK[k]); return; }
     if (sofa) sc.img(`p${a.persona % PEOPLE}_sofa`, x, yL + y, L.OBJ, yL + 62);
     else sc.stand(`p${a.persona % PEOPLE}_front`, x, yL + y, 12);
+    hit(sc, opt, a, x - 1, yL + y - 2, 16, 20);
     if (a.state === "idle") sc.img("zzz", x + 11, yL + y - 11, L.TOP);
     if (a.state === "blocked") marks(sc, a, x + 10, yL + y - 12, 0, 0);
     if (a.state === "done") sc.img("bubble_done", x + 10, yL + y - 12, L.TOP);
