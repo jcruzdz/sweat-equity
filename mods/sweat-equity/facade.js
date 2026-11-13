@@ -6,6 +6,7 @@ import { h_flex, v_flex } from "gpui-base";
 import { Scene, L, STATUS, INK, ALERT, DIR, col, hash, tag, centered, fpx } from "./scene.js";
 import { SPOTS, PEOPLE } from "./sprites.js";
 import { paintName } from "./graffiti.js";
+import { fmtTokens } from "./data.js";
 
 export const BW = 292;          // building width, art px
 const FLOOR_H = 58, ROOF_H = 32, LOBBY_H = 52, GROUND_H = 24, SKY_MIN = 26, SIDE_MIN = 18;
@@ -35,7 +36,9 @@ export function facadeScale(wpx, hpx, floors) {
  * @param {{ floors: any[], available: boolean, waiting: number, finished: number, loose?: any[], hiddenN?: number }} model  floors bottom-up;
  *   a floor with `hidden` is an empty shell, drawn only while the hidden floors are being shown
  * @param {any} opt  t, peek (the hidden floors are shown), and what clicks do: onEnter(name, cx), onSpace(dev), onAdd(cx), onInbox(),
- *   onDone(); onNew(name, cx), onEdit(name, cx), onHide(name), onDev(dev, cx) and onPeek(cx) are null where they make no sense
+ *   onDone(); onNew(name, cx), onEdit(name, cx), onHide(name), onDev(dev, cx) and onPeek(cx) are null where they make no sense.
+ *   What the sidebar line watches: prs (by development id), stopped (a Set of development ids whose story is stopped in Jira),
+ *   stoppedN, usage ({ tokens, budget }), pendingN, and onStopped(cx), onPending(cx), onPr(pr)
  */
 export function buildFacade(sc, area, model, opt) {
   const u = sc.u, t = opt.t;
@@ -64,6 +67,12 @@ export function buildFacade(sc, area, model, opt) {
     sc.at(moon, moonX, 10, L.UI);
   }
   [[0.3, 30, 0], [0.7, 16, 1], [0.84, 58, 2], [0.02, 66, 3]].forEach(([fx, y, k]) => sc.img(`cloud_${k}`, Math.round(W * fx), y, L.FLOOR, -6));
+  // one rain cloud per branch whose CI fails (three at most); a clear sky when everything passes
+  const failing = Object.values(opt.prs ?? {}).filter((p) => p && p.ci === "fail");
+  [[0.2, 40], [0.62, 28], [0.9, 46]].slice(0, Math.min(3, failing.length)).forEach(([fx, y], i) => {
+    stormCloud(sc, Math.round(W * fx), y, i);
+    if (i === 0) sc.at(div().id("se-storm").w(sc.u(32)).h(sc.u(16)).tooltip(`${opt.t.ciFailTip.replace("{n}", failing.map((p) => p.branch).join(", "))}`), Math.round(W * fx), y, L.UI);
+  });
   for (let x = 0; x < W; x += 220) sc.img("skyline", x, gy - 96, L.FLOOR, -5);
   sc.box(0, gy - 40, W, 40, "#232d6e5a", L.FLOOR, -4);
   for (let x = 0; x < W; x += 220) sc.img("ground", x, gy, L.RUG, 0);
@@ -81,6 +90,7 @@ export function buildFacade(sc, area, model, opt) {
 
   // the building: roof, one module per floor, lobby
   sc.img("roof", BX, top, L.OBJ, top);
+  if (opt.usage) solar(sc, opt, BX, top);
   rows.forEach((row, i) => floorModule(sc, opt, row, BX, top + ROOF_H + i * FLOOR_H));
   sc.img("lobby", BX, lobbyY, L.OBJ, lobbyY);
   const bodyTop = top + ROOF_H, bodyH = gy - bodyTop;
@@ -89,16 +99,29 @@ export function buildFacade(sc, area, model, opt) {
     sc.box(x + 1, bodyTop, 1, bodyH, "#1d2135", L.OBJ, gy);
   });
   sc.at(tag(u, t.ground, "#f4f4f8", "#f4f4f8"), BX - 17, lobbyY + 18);
+  // at the reception desk: what Jira assigns you and nobody works on
+  if (opt.pendingN > 0 && opt.onPending) {
+    const desk = h_flex().id("se-desk").h(Math.max(u(7), 15)).px(u(1.6)).gap(u(1.2)).items_center().bg(col(INK))
+      .border(Math.max(1, u(0.6))).border_color(col("#5b8cff")).cursor_pointer().tooltip(t.pendingBadge.replace("{n}", String(opt.pendingN)))
+      .text_size(fpx(u, 4, 9.5)).font_bold().text_color(col("#f4f4f8"))
+      .on_click((_e, cx) => opt.onPending(cx))
+      .child(svg(`${DIR}/icons/clipboard.svg`).size(Math.max(u(4), 10)).text_color(col("#9fb8ff")))
+      .child(String(opt.pendingN));
+    sc.at(desk, BX + 33, lobbyY + 12);
+  }
 
   // on the path: how many agents wait for you, and how many finished while you were not looking
   const notice = (id, bg, label, click) => h_flex().id(id).h(Math.max(u(8), 17)).px(u(3)).gap(u(1.5)).items_center().flex_none().bg(col(bg)).border(Math.max(1, u(0.6))).border_color(col(INK))
     .text_size(fpx(u, 4.2, 10)).font_bold().text_color(col(INK)).cursor_pointer()
-    .on_click(() => click())
+    .on_click((_e, cx) => click(cx))
     .child(label);
   const notices = [];
   if (model.waiting > 0) notices.push(notice("se-inbox", ALERT, `! ${model.waiting} ${model.waiting === 1 ? t.waitsOne : t.waitsMany}`, opt.onInbox));
   if (model.finished > 0) notices.push(notice("se-finished", STATUS.done.color, `✓ ${model.finished} ${model.finished === 1 ? t.doneOne : t.doneMany}`, opt.onDone));
-  if (notices.length) centered(sc, h_flex().gap(u(3)).children(notices), BX + BW / 2, gy + 9, 240);
+  if (opt.stoppedN > 0 && opt.onStopped) {
+    notices.push(notice("se-stopped", STOP, h_flex().gap(u(1.2)).items_center().child(bars(u, INK)).child(`${opt.stoppedN} ${opt.stoppedN === 1 ? t.stoppedOne : t.stoppedMany}`), (cx) => opt.onStopped(cx)));
+  }
+  if (notices.length) centered(sc, h_flex().gap(u(3)).children(notices), BX + BW / 2, gy + 9, 300);
 
   outside(sc, opt, model.loose ?? [], BX, gy);
   return { BX, top, gy };
@@ -113,6 +136,52 @@ function spaceTip(s, opt) {
     return [k, i.summary, i.status, total ? `${c[c.length - 1]}/${total}` : ""].filter(Boolean).join(" · ");
   });
   return [s.title ?? s.name, ...lines].join("\n");
+}
+
+const STOP = "#ff6b5e";
+
+/** The pause sign: two bars, in any color, sized for a label. */
+function bars(u, color) {
+  const h = Math.max(u(3.2), 8), w = Math.max(u(1), 2.5);
+  return h_flex().flex_none().gap(Math.max(u(0.7), 2)).child(div().w(w).h(h).bg(col(color))).child(div().w(w).h(h).bg(col(color)));
+}
+
+/** A rain cloud drawn in boxes (art px), with drops that come and go. */
+function stormCloud(sc, x, y, seed) {
+  const DARK = "#3f4566", TOP = "#565d84", LOW = "#2d3150";
+  sc.box(x + 8, y, 11, 2, TOP, L.FLOOR, -5.9);
+  sc.box(x + 4, y + 2, 21, 3, DARK, L.FLOOR, -5.9);
+  sc.box(x + 5, y + 2, 8, 1, TOP, L.FLOOR, -5.8);
+  sc.box(x + 1, y + 5, 29, 3, DARK, L.FLOOR, -5.9);
+  sc.box(x + 2, y + 8, 27, 1, LOW, L.FLOOR, -5.9);
+  for (let k = 0; k < 6; k++) sc.blink(x + 4 + k * 4 + (k % 2), y + 10 + (k % 3), 1, 3, "#8fa3d8", 500 + ((k * 170 + seed * 90) % 400), L.FLOOR, -5.8);
+}
+
+/** The pause beacon over a window whose story is stopped in Jira: the same size as the other beacons. */
+function pauseBeacon(sc, x, y) {
+  sc.box(x, y, 11, 12, "#5a1a1a", L.TOP);
+  sc.box(x + 1, y + 1, 9, 10, STOP, L.TOP);
+  sc.box(x + 3, y + 3, 2, 6, "#2a0c0c", L.TOP);
+  sc.box(x + 6, y + 3, 2, 6, "#2a0c0c", L.TOP);
+}
+
+/** The blind half down over a window: slats across its top. */
+function blind(sc, x, y) {
+  for (let k = 0; k < 6; k++) sc.box(x + 1, y + k * 2, BAY_W - 2, 2, k % 2 ? "#262c52" : "#39406b", L.OBJ, y + 1.5);
+  sc.box(x + 1, y + 12, BAY_W - 2, 1, "#1a1f3d", L.OBJ, y + 1.5);
+}
+
+/** The solar panels light up cell by cell with today's tokens against the budget; past it they flicker. */
+function solar(sc, opt, BX, top) {
+  const u = sc.u, { tokens, budget } = opt.usage, ratio = budget > 0 ? tokens / budget : 0;
+  const lit = Math.min(12, Math.round(12 * Math.min(1, ratio)));
+  for (let i = 0; i < lit; i++) {
+    const k = Math.floor(i / 6), c = i % 6, x = BX + BW - 150 + k * 60 + c * 9, y = top + 11;
+    if (ratio > 1) sc.blink(x, y, 8, 13, "#ffd65a66", 700 + c * 60, L.OBJ, top + 40);
+    else sc.box(x, y, 8, 13, "#ffd65a55", L.OBJ, top + 40);
+  }
+  const tip = opt.t.solarTip.replace("{p}", String(Math.round(ratio * 100))).replace("{u}", fmtTokens(tokens)).replace("{b}", fmtTokens(budget));
+  sc.at(div().id("se-solar").w(u(112)).h(u(15)).tooltip(tip), BX + BW - 150, top + 10);
 }
 
 /** Developments on no floor wait outside, by the bench: a click sends one to a floor. */
@@ -204,6 +273,7 @@ function floorModule(sc, opt, row, BX, y) {
       else sc.img("halo", x - 4, y + Y0 + 2, L.OBJ, y + Y0 + 2);
       sc.img(lit, x, y + Y0 + 6, L.OBJ, y + Y0 + 3);
       sc.box(x, y + Y0 + 34, BAY_W, 1, "#ffb3476e", L.OBJ, y + Y0 + 4);
+      if (opt.stopped?.has(s.id)) blind(sc, x, y + Y0 + 6);
       // ...and inside, screens change and hands move
       if (busy) (SPOTS[lit] ?? []).forEach(([sx, sy, hx, hy], n) => {
         sc.blink(x + sx, y + Y0 + 6 + sy, 4, 3, "#23346e", 640 + n * 190, L.OBJ, y + Y0 + 5, 0, 0.8);
@@ -223,15 +293,16 @@ function floorModule(sc, opt, row, BX, y) {
       }
       continue;
     }
-    const look = STATUS[s.status];
+    const look = STATUS[s.status], halted = !!opt.stopped?.has(s.id);
     let chip = h_flex().id(`se-space-${s.id}`).w(u(BAY_W)).h(u(7)).px(u(1.8)).gap(u(1.5)).items_center().bg(col(INK))
-      .border(Math.max(1, u(0.5))).border_color(col(look ? look.color : "#3b4262"))
+      .border(Math.max(1, u(0.5))).border_color(col(halted && s.status !== "blocked" ? STOP : look ? look.color : "#3b4262"))
       .text_size(fpx(u, 4, 9.5)).text_color(col("#f4f4f8")).cursor_pointer().tooltip(spaceTip(s, opt))
       .on_click(() => opt.onSpace(s))
       .child(div().flex_1().truncate().font_semibold().child(s.keys.length ? s.keys[0] + (s.keys.length > 1 ? ` +${s.keys.length - 1}` : "") : s.name));
     // right click: move it to another floor
     if (opt.onDev) chip = chip.on_mouse_down("right", (_e, cx) => opt.onDev(s, cx));
     if (s.agents) chip = chip.child(div().flex_none().text_color(col(look ? look.color : "#c9d6e0")).child(`×${s.agents}`));
+    if (halted) chip = chip.child(bars(u, STOP));
     // the story's board, when Jira says: one bar per column of its Jira board, each as tall as its share of the subtasks
     const iss = s.keys.length ? opt.issues?.[s.keys[0]] : null, cols = iss?.cols, tot = cols ? cols.reduce((p, q) => p + q, 0) : 0;
     if (tot) {
@@ -244,6 +315,21 @@ function floorModule(sc, opt, row, BX, y) {
       })));
     }
     sc.at(chip, x, y + Y0 + 36);
+    // the branch's PR, top left inside the window: blue with a tick when its checks pass, orange with a cross when CI fails
+    const pr = opt.prs?.[s.id];
+    if (pr && pr.state !== "CLOSED") {
+      const PRC = { pass: ["#5b8cff", "#c9d8ff", "check"], fail: ["#ff9a3d", "#ffc896", "x"], pending: ["#94b0c2", "#dfe7ef", "pr"] }[pr.ci] ?? ["#94b0c2", "#dfe7ef", "pr"];
+      const merged = pr.state === "MERGED";
+      let prTag = h_flex().id(`se-pr-${s.id}`).h(Math.max(u(5.5), 13)).px(u(1.2)).gap(u(0.8)).items_center().bg(col(INK))
+        .border(Math.max(1, u(0.5))).border_color(col(merged ? "#a37cff" : PRC[0])).text_size(fpx(u, 3.4, 8.5)).font_bold().text_color(col(merged ? "#d9c8ff" : PRC[1]))
+        .tooltip(`${t.prChecks.replace("{n}", String(pr.number)).replace("{ok}", String(pr.ok)).replace("{all}", String(pr.all))} · ${pr.branch}`)
+        .child(`#${pr.number}`)
+        .child(svg(`${DIR}/icons/${merged ? "pr" : PRC[2]}.svg`).size(Math.max(u(3), 8)).text_color(col(merged ? "#d9c8ff" : PRC[1])));
+      if (opt.onPr && pr.url) prTag = prTag.cursor_pointer().on_click((_e, cx) => { cx.stop_propagation(); opt.onPr(pr); });
+      sc.at(prTag, x + 1.5, y + Y0 + 7, L.TOP);
+    }
+    // one beacon per window, the most urgent: someone waits for you, the story is stopped, it finished, it works
+    if (s.status !== "blocked" && halted) { pauseBeacon(sc, x + BAY_W - 14, y + Y0 + 8); continue; }
     if (s.status === "blocked") {
       const [bw, bh] = sc.size("beacon");
       const bob = div().relative().loop("top", { from: 0, to: u(-2), period: 900 })

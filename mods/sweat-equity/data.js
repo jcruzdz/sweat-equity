@@ -28,6 +28,19 @@ export const TEXT = {
     editFloor: "Edit floor", nameLabel: "Name", rename: "Rename", colorLabel: "Color", folderLabel: "Folder", change: "Change…", hideFloor: "Hide this floor", showFloor: "Show this floor again", ghost: "Hidden", peekOn: "Show hidden floors", peekNone: "Nothing hidden", peekHint: "the eye on a floor hides it", peekOff: "Hide them again",
     removeFloor: "Remove floor", sure: "Remove it for good", goSpace: "Go to the space", moveTo: "Move to", sendTo: "Send to", noFloor: "Leave without a floor", auto: "Back to automatic",
     ownFloor: "A floor of its own, from its folder", outside: "no floor", team: "Team", inLounge: "In the lounge", enterHint: "Enter starts · Esc closes the tower", colNames: ["TO DO", "DOING", "REVIEW", "DONE"], subsOf: "{d} of {n} subtasks", waitsYou: "{who} is waiting for you", reply: "Reply", noSubs: "no subtasks", openJira: "Open in Jira", noBoard: "No Jira data for this story yet", squad: "Squad", board: "Board", jira401: "Jira: 401, check the email and the token in the keychain",
+    stoppedOne: "stopped", stoppedMany: "stopped", pendingBadge: "{n} in Jira with no agent", pending: "Pending", pendingHint: "Assigned to you in Jira, with no agent on any branch",
+    readingJira: "Reading Jira…", startTicket: "Start", noPending: "Nothing assigned to you without an agent", pendingErr: "Could not read Jira", moveOnStart: "Move the ticket to {s} when starting", fromTicket: "From {key}",
+    ticketMsg: "Work on {key} on a branch named {branch}: {summary}. Read the ticket in Jira before starting.", floorLabel: "Floor", priority: "priority",
+    log: "Log", whileAway: "While you were away", sinceN: "since {t} · {n} events", markSeen: "Mark all seen", fAll: "All", fJira: "Jira", fAgents: "Agents", fCi: "PR and CI",
+    lastHalf: "LAST HALF HOUR", earlier: "EARLIER", noEvents: "Nothing new", notifs: "Notifications", nStopped: "Stopped and finished", nAgents: "Moves by agents", nPeople: "Moves by people", nQuiet: "Quiet from {a}:00 to {b}:00",
+    evWaits: "{who} is waiting for you", evDone: "{who} finished", evCiFail: "CI failed on {branch}", evCiPass: "CI passes again on {branch}", evMerged: "PR #{n} merged", evStale: "{key} has been stopped for {age}",
+    grouped: "{key}: {n} subtasks moved", groupedTo: "{n} to {s}", by: "by {who}", byAgent: "agent", recent: "LATEST MOVES", ago: "{t} ago",
+    tokensOf: "{t} tokens · {d} of agents", prChecks: "PR #{n} · checks {ok}/{all}", openPr: "Open PR #{n}", solarTip: "{p}% · {u} of {b} tokens today", ciFailTip: "CI failing on {n}",
+    help: "How to read the tower", legendSub: "Shown once. Then it lives in the ? button on the bar.", dontShow: "Don't show again", gotIt: "Got it",
+    lgWait: "An agent is waiting for you", lgWaitD: "Amber beacon with “!”. A click takes you to its terminal.", lgWork: "Working", lgWorkD: "Blue badge with dots; the window breathes.",
+    lgDone: "Finished and not seen yet", lgDoneD: "Green flag with “✓”. It goes when you visit.", lgStop: "Stopped in Jira", lgStopD: "Red pause and the blind half down.",
+    lgCloud: "Cloud with rain", lgCloudD: "A branch with CI failing. No clouds, everything passes.", lgSolar: "Solar panels", lgSolarD: "Today's tokens against your budget.",
+    lgMoon: "The moon", lgMoonD: "If it reacts on hover, floors are hidden. A click shows them for a moment.", lgDesk: "Reception", lgDeskD: "What Jira assigns you and no agent works on.",
     catNames: ["To Do", "In Progress", "Done"], moved: "{key} moved: {from} → {to}", movedStopped: "{key} stopped: {from} → {to}",
     jiraNoKeys: "Jira connected · no branch carries a ticket key yet (like feature/ABC-12-name)",
   },
@@ -43,6 +56,19 @@ export const TEXT = {
     editFloor: "Editar piso", nameLabel: "Nombre", rename: "Renombrar", colorLabel: "Color", folderLabel: "Carpeta", change: "Cambiar…", hideFloor: "Ocultar este piso", showFloor: "Volver a mostrar este piso", ghost: "Oculto", peekOn: "Ver pisos ocultos", peekNone: "Nada oculto", peekHint: "el ojo de cada piso lo oculta", peekOff: "Volver a ocultarlos",
     removeFloor: "Quitar piso", sure: "Quitarlo de verdad", goSpace: "Ir al space", moveTo: "Mover a", sendTo: "Mandar a", noFloor: "Dejar sin piso", auto: "Volver a automático",
     ownFloor: "Piso propio, con su carpeta", outside: "sin piso", team: "Equipo", inLounge: "En la sala", enterHint: "Enter inicia · Esc cierra el edificio", colNames: ["HACER", "CURSO", "REVIEW", "HECHO"], subsOf: "{d} de {n} subtareas", waitsYou: "{who} te espera", reply: "Responder", noSubs: "sin subtareas", openJira: "Abrir en Jira", noBoard: "Aún no hay datos de Jira para esta US", squad: "Escuadrón", board: "Tablero", jira401: "Jira: 401, revisa el correo y el token del llavero",
+    stoppedOne: "detenida", stoppedMany: "detenidas", pendingBadge: "{n} en Jira sin agente", pending: "Pendientes", pendingHint: "Asignadas a ti en Jira, sin agente en ninguna rama",
+    readingJira: "Leyendo Jira…", startTicket: "Empezar", noPending: "Nada asignado a ti sin agente", pendingErr: "No se pudo leer Jira", moveOnStart: "Mover el ticket a {s} al iniciar", fromTicket: "Desde {key}",
+    ticketMsg: "Trabaja {key} en una rama llamada {branch}: {summary}. Lee el ticket en Jira antes de empezar.", floorLabel: "Piso", priority: "prioridad",
+    log: "Bitácora", whileAway: "Mientras no veías", sinceN: "desde las {t} · {n} eventos", markSeen: "Marcar todo visto", fAll: "Todo", fJira: "Jira", fAgents: "Agentes", fCi: "PR y CI",
+    lastHalf: "ÚLTIMA MEDIA HORA", earlier: "ANTES", noEvents: "Nada nuevo", notifs: "Avisos", nStopped: "Detenidas y terminadas", nAgents: "Movimientos de agentes", nPeople: "Movimientos de personas", nQuiet: "Silencio de {a}:00 a {b}:00",
+    evWaits: "{who} te espera", evDone: "{who} terminó", evCiFail: "CI falló en {branch}", evCiPass: "CI vuelve a pasar en {branch}", evMerged: "PR #{n} mergeado", evStale: "{key} lleva {age} detenida",
+    grouped: "{key}: {n} subtareas se movieron", groupedTo: "{n} a {s}", by: "por {who}", byAgent: "agente", recent: "ÚLTIMOS MOVIMIENTOS", ago: "hace {t}",
+    tokensOf: "{t} tokens · {d} de agentes", prChecks: "PR #{n} · checks {ok}/{all}", openPr: "Abrir PR #{n}", solarTip: "{p}% · {u} de {b} tokens hoy", ciFailTip: "CI fallando en {n}",
+    help: "Cómo leer el edificio", legendSub: "Sale una vez. Luego vive en el botón «?» de la barra.", dontShow: "No volver a mostrar", gotIt: "Entendido",
+    lgWait: "Un agente te espera", lgWaitD: "Baliza ámbar con «!». Clic y vas a su terminal.", lgWork: "Trabajando", lgWorkD: "Insignia azul con puntos; la ventana respira.",
+    lgDone: "Terminó y no lo has visto", lgDoneD: "Bandera verde con «✓». Se quita al visitarlo.", lgStop: "Detenida en Jira", lgStopD: "Pausa roja y persiana a media altura.",
+    lgCloud: "Nube con lluvia", lgCloudD: "Una rama con CI fallando. Sin nubes, todo pasa.", lgSolar: "Paneles solares", lgSolarD: "Tokens de hoy contra tu presupuesto.",
+    lgMoon: "La luna", lgMoonD: "Si reacciona al pasar, hay pisos ocultos. Clic para verlos un momento.", lgDesk: "Recepción", lgDeskD: "Lo que Jira te asigna y ningún agente trabaja.",
     catNames: ["Por hacer", "En curso", "Hecho"], moved: "{key} se movió: {from} → {to}", movedStopped: "{key} se detuvo: {from} → {to}",
     jiraNoKeys: "Jira conectado · ninguna rama trae clave de US todavía (como feature/ABC-12-nombre)",
   },
@@ -134,7 +160,7 @@ function shortMachine(m) {
   return s.length > 12 ? s.slice(0, 11) + "…" : s;
 }
 
-/** Optional `~/.config/herdr-app/sweat-equity.json`: { lang, jira, keychain, jiraBoards, jiraBlocked, workspaces, demo, frame }. */
+/** Optional `~/.config/herdr-app/sweat-equity.json`: { lang, jira, keychain, jiraBoards, jiraBlocked, staleHours, quietHours, pendingJql, tokenBudget, usage, workspaces, demo, frame }. */
 export async function loadConfig() {
   try {
     const text = await readTextFile(`${appHome()}/sweat-equity.json`);
@@ -257,6 +283,20 @@ export function demoTower() {
   };
 }
 
+/** What the sidebar line would have found, for the sample tower: a PR with its checks green, one failing, a stopped story, tokens, pending tickets. */
+export function demoLive() {
+  return {
+    prs: { d4: { number: 12, url: "", state: "OPEN", branch: "feature/WEB-31-portal", ok: 12, fail: 0, all: 12, ci: "pass" }, d1: { number: 9, url: "", state: "OPEN", branch: "feature/APP-142-pin", ok: 5, fail: 2, all: 7, ci: "fail" } },
+    usage: { tokens: 1.9e6, at: Date.now() },
+    pending: { at: Date.now(), list: [
+      { key: "APP-160", summary: "Roaming bundles in the plan picker", status: "To Do", cat: 0, priority: "High", rank: 2, type: "Story" },
+      { key: "WEB-40", summary: "Invoice download for business accounts", status: "In Progress", cat: 1, priority: "Medium", rank: 3, type: "Story" },
+      { key: "APP-163", summary: "Crash on the top-up receipt", status: "To Do", cat: 0, priority: "Highest", rank: 1, type: "Bug" },
+    ] },
+    stopped: ["d2"],
+  };
+}
+
 export function demoOffice(floor, t) {
   const room = (key, title, statusText, counts, cur, list, cols = [counts[0], counts[1], 0, counts[2]], curCol = cur === 2 ? 3 : cur) => ({ key, title, statusText, counts, cols, curCol, cur, agents: list, more: 0 });
   return {
@@ -270,6 +310,132 @@ export function demoOffice(floor, t) {
   };
 }
 
+// ---- what the sidebar line watches and the tower shows: kept in Herdr's shared state
+
+const LIVE = "sweat-equity.live", LOG = "sweat-equity.log", PREFS = "sweat-equity.prefs";
+
+/** PRs by development id, today's tokens, and the pending tickets: written by the sidebar line, read by the tower. */
+export function readLive() {
+  /** @type {any} */
+  const v = shared(LIVE);
+  return v && typeof v === "object" ? v : {};
+}
+export function writeLive(patch) { setShared(LIVE, { ...readLive(), ...patch }); }
+
+/** The log: newest first, at most 80 events, and when it was last looked at. */
+export function readLog() {
+  /** @type {any} */
+  const v = shared(LOG);
+  return v && Array.isArray(v.events) ? v : { events: [], seen: 0 };
+}
+export function logEvents(list) {
+  if (!list.length) return;
+  const cur = readLog();
+  setShared(LOG, { ...cur, events: [...list.sort((a, b) => b.at - a.at), ...cur.events].slice(0, 80) });
+}
+export function markSeen() { setShared(LOG, { ...readLog(), seen: Date.now() }); }
+
+/** What the person chose: the legend seen, and which notices to post. */
+export function readPrefs() {
+  /** @type {any} */
+  const v = shared(PREFS);
+  const p = v && typeof v === "object" ? v : {};
+  return { legendSeen: !!p.legendSeen, notify: { stopped: true, agents: true, people: false, quiet: true, ...(p.notify ?? {}) } };
+}
+export function writePrefs(patch) { setShared(PREFS, { ...readPrefs(), ...patch }); }
+
+/** 1234567 -> "1.2 M"; 45200 -> "45 k". */
+export function fmtTokens(n) {
+  return n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)} M` : n >= 1e3 ? `${Math.round(n / 1e3)} k` : String(Math.round(n));
+}
+/** A span of time, short: "4 min", "5 h", "2 d". */
+export function fmtAge(ms) {
+  const m = Math.max(1, Math.round(ms / 60000));
+  return m < 60 ? `${m} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} d`;
+}
+/** "11m 17s · 251.9k tokens" (a helper's line on its agent's screen) -> its tokens and seconds. */
+export function crewCost(meta) {
+  const m = /([\d.,]+)\s?([kKmM]?)\s*tokens/.exec(meta ?? "");
+  const n = m ? parseFloat(m[1].replace(/,/g, "")) * (/[kK]/.test(m[2]) ? 1e3 : /[mM]/.test(m[2]) ? 1e6 : 1) : 0;
+  let secs = 0;
+  for (const [, v, u] of (meta ?? "").matchAll(/(\d+)\s?([hms])/g)) secs += Number(v) * (u === "h" ? 3600 : u === "m" ? 60 : 1);
+  return { tokens: n, secs };
+}
+
+let GH = null;
+/** `gh` where the app's PATH may not reach it. */
+async function gh(args, cwd) {
+  for (const bin of GH ? [GH] : ["gh", "/opt/homebrew/bin/gh", "/usr/local/bin/gh", "/usr/bin/gh"]) {
+    try {
+      const r = await exec(bin, args, { cwd, timeout: 20000 });
+      if (r.code === 127 || /not found|ENOENT/i.test(r.stderr ?? "")) continue;
+      GH = bin;
+      return r;
+    } catch (_e) { /* not this one */ }
+  }
+  return null;
+}
+
+/**
+ * The PR of each development's branch, with its checks: { [devId]: { number, url, state, branch, ok, fail, all, ci } }.
+ * `ci` is "pass", "fail" or "pending". Developments on main (or with no PR, or another machine) have none.
+ */
+export async function readPrs(devs) {
+  const out = {};
+  for (const d of devs) {
+    if (d.machine) continue;
+    const branch = (d.branches ?? []).find((b) => b && !/^(main|master|develop|dev|HEAD)$/.test(b));
+    const cwd = d.cwds?.[0] || d.start;
+    if (!branch || !cwd) continue;
+    const r = await gh(["pr", "view", branch, "--json", "number,url,state,statusCheckRollup"], cwd);
+    if (!r || r.code !== 0) continue;
+    try {
+      /** @type {any} */
+      const j = JSON.parse(r.stdout);
+      const checks = j.statusCheckRollup ?? [];
+      const st = (c) => String(c.conclusion || c.state || c.status || "");
+      const fail = checks.filter((c) => /FAIL|ERROR|CANCELLED|TIMED_OUT|ACTION_REQUIRED/i.test(st(c))).length;
+      const ok = checks.filter((c) => /SUCCESS|NEUTRAL|SKIPPED/i.test(st(c))).length;
+      out[d.id] = { number: j.number, url: j.url, state: j.state, branch, ok, fail, all: checks.length, ci: fail ? "fail" : ok === checks.length ? "pass" : "pending" };
+    } catch (_e) { /* not JSON: no PR shown */ }
+  }
+  return out;
+}
+
+// Today's tokens, from Claude Code's own session logs on this computer (input + output + cache writes; cache reads left out).
+const USAGE = `
+import os, json, glob, time, datetime
+root = os.path.expanduser('~/.claude/projects'); today = datetime.date.today(); start = time.mktime(today.timetuple())
+seen, total = set(), 0
+for f in glob.glob(root + '/**/*.jsonl', recursive=True):
+    try:
+        if os.path.getmtime(f) < start: continue
+        with open(f, 'rb') as fh:
+            for line in fh:
+                if b'"usage"' not in line: continue
+                try: d = json.loads(line)
+                except Exception: continue
+                m = d.get('message') if isinstance(d, dict) else None
+                u = m.get('usage') if isinstance(m, dict) else None
+                if not isinstance(u, dict): continue
+                try: t = datetime.datetime.fromisoformat(str(d.get('timestamp', '')).replace('Z', '+00:00')).astimezone()
+                except Exception: continue
+                if t.date() != today: continue
+                k = (m.get('id'), d.get('requestId'))
+                if k in seen: continue
+                seen.add(k)
+                total += (u.get('input_tokens') or 0) + (u.get('output_tokens') or 0) + (u.get('cache_creation_input_tokens') or 0)
+    except Exception: pass
+print(total)
+`;
+export async function readUsage() {
+  try {
+    const r = await exec("python3", ["-I", "-c", USAGE], { timeout: 90000 });
+    const n = r.code === 0 ? Number(r.stdout.trim()) : NaN;
+    return Number.isFinite(n) ? n : null;
+  } catch (_e) { return null; }
+}
+
 // ---- Jira (optional): status, title and subtasks of each ticket on screen
 //
 // The columns are the ones on each project's Jira board (Agile API), read once in a while and never
@@ -280,17 +446,25 @@ export function demoOffice(floor, t) {
 const CAT = { new: 0, indeterminate: 1, done: 2 };
 const BOARD_TTL = 30 * 60 * 1000;
 const BLOCKED = /deten|bloque|blocked|on hold|hold\b|impedi|paus|espera/i;
+/** The issue property an agent sets when it moves a ticket: { by: "qa-verificador", status: "QA", at: 1731500000000 }. */
+export const MOVER_PROP = "sweat-equity.mover";
 
 export class Jira {
   constructor() {
     this.auth = null;
-    /** @type {Record<string, { status: string, summary: string, counts: number[], cols: number[], names: string[], cur: number, curCol: number, done: number, blocked: boolean, blockedCols: boolean[], board: string, solo?: boolean, subs: { key: string, summary: string, status: string, col: number, blocked: boolean }[] } | null>} */
+    /** @type {Record<string, any>} key -> { status, summary, counts, cols, names, cur, curCol, done, blocked, blockedCols, board, since, by, solo, subs: [{ key, summary, status, col, blocked, since, by, at }] } | null */
     this.issues = {};
     /** project key -> { at, name, columns: { name, ids: Set<string> }[] | null } */
     this.boards = {};
     /** last status seen per issue key (stories and subtasks), to tell who moved */
     this.seen = {};
-    /** @type {{ key: string, story: string, summary: string, from: string, to: string, blocked: boolean, done: boolean }[]} moves found by the last sync */
+    /** key -> { status, at }: since when an issue is in its status (read from the changelog, for stopped ones) */
+    this.since = {};
+    /** key -> { by, status, at }: the agent that last moved it, from the issue property agents set */
+    this.movers = {};
+    /** keys already told about being stopped too long, with the status they were in */
+    this.stale = {};
+    /** @type {any[]} moves found by the last sync: { kind: "move"|"stale", key, story, summary, from, to, blocked, done, by, age } */
     this.moves = [];
     this.note = "";
   }
@@ -307,9 +481,20 @@ export class Jira {
     return this.auth;
   }
 
+  async headers(cfg) {
+    return { Authorization: await this.credentials(cfg.keychain || "herdr-jira"), Accept: "application/json" };
+  }
+
+  host(cfg) { return String(cfg.jira).replace(/\/+$/, ""); }
+
+  stopped(cfg) {
+    try { if (cfg.jiraBlocked) return new RegExp(cfg.jiraBlocked, "i"); } catch (_e) { /* a bad pattern: keep the default */ }
+    return BLOCKED;
+  }
+
   /**
    * The project's board columns, as Jira lists them. `cfg.jiraBoards` ({ PROJ: boardId }) picks one
-   * when a project has several; otherwise the first board Jira returns for the project.
+   * when a project has several; otherwise the first kanban board Jira returns for the project.
    */
   async board(host, headers, project, cfg) {
     const old = this.boards[project];
@@ -342,15 +527,55 @@ export class Jira {
     return entry;
   }
 
-  /** @param {{ jira?: string, keychain?: string, jiraBoards?: Record<string, number>, jiraBlocked?: string }} cfg @param {string[]} keys @param {Record<string, string>} t */
+  /** Since when `key` is in `status`: the last change into it in the changelog. Cached until the status changes. */
+  async sinceOf(host, headers, key, status) {
+    const c = this.since[key];
+    if (c && c.status === status) return c.at;
+    let at = null;
+    try {
+      let r = await fetch(`${host}/rest/api/3/issue/${key}/changelog?maxResults=100`, { headers });
+      /** @type {any} */
+      let j = r.ok ? await r.json() : null;
+      if (j && j.total > 100) {
+        r = await fetch(`${host}/rest/api/3/issue/${key}/changelog?startAt=${j.total - 100}&maxResults=100`, { headers });
+        j = r.ok ? await r.json() : j;
+      }
+      for (const h of j?.values ?? []) {
+        if ((h.items ?? []).some((it) => it.field === "status" && it.toString === status)) at = Date.parse(h.created);
+      }
+    } catch (_e) { /* no age shown */ }
+    this.since[key] = { status, at };
+    return at;
+  }
+
+  /** Who moved `key` last, when an agent said so in the issue property. */
+  async moverOf(host, headers, key) {
+    try {
+      const r = await fetch(`${host}/rest/api/3/issue/${key}/properties/${MOVER_PROP}`, { headers });
+      if (!r.ok) { delete this.movers[key]; return null; }
+      /** @type {any} */
+      const j = await r.json();
+      const v = j?.value;
+      if (v && typeof v === "object" && v.by) { this.movers[key] = { by: String(v.by), status: String(v.status ?? ""), at: Number(v.at) || null }; return this.movers[key]; }
+    } catch (_e) { /* nobody said */ }
+    delete this.movers[key];
+    return null;
+  }
+
+  /** The mover, only while the issue is still in the status the agent moved it to. */
+  byOf(key, status) {
+    const m = this.movers[key];
+    return m && (!m.status || m.status === status) ? m : null;
+  }
+
+  /** @param {any} cfg @param {string[]} keys @param {Record<string, any>} t */
   async sync(cfg, keys, t) {
     this.moves = [];
     if (!cfg.jira) { this.note = ""; return; }
-    const host = cfg.jira.replace(/\/+$/, "");
-    let stopped = BLOCKED;
-    try { if (cfg.jiraBlocked) stopped = new RegExp(cfg.jiraBlocked, "i"); } catch (_e) { /* a bad pattern: keep the default */ }
+    const host = this.host(cfg), stopped = this.stopped(cfg);
+    const staleMs = (Number(cfg.staleHours) > 0 ? Number(cfg.staleHours) : 24) * 3600 * 1000;
     try {
-      const headers = { Authorization: await this.credentials(cfg.keychain || "herdr-jira"), Accept: "application/json" };
+      const headers = await this.headers(cfg);
       if (!keys.length) {
         // nothing to look up: say whether the credentials work, and why there is no whiteboard
         const r = await fetch(`${host}/rest/api/3/myself`, { headers });
@@ -388,41 +613,109 @@ export class Jira {
         const place = (f) => {
           const c = CAT[f?.status?.statusCategory?.key];
           const k = column(f?.status);
-          if (c === undefined || k < 0) return { col: -1, blocked: false };
+          if (c === undefined || k < 0) return { col: -1, blocked: false, cat: -1 };
           counts[c]++;
           if (c === 2) done++;
           cols[k]++;
           const blocked = c !== 2 && stopped.test(f.status.name ?? "");
           if (blocked) blockedCols[k] = true;
-          return { col: k, blocked };
+          return { col: k, blocked, cat: c };
         };
         const subs = j.fields?.subtasks ?? [];
-        /** each subtask with its column, for the board panel */
-        const list = subs.map((s) => ({ key: s.key, summary: s.fields?.summary ?? "", status: s.fields?.status?.name ?? "", ...place(s.fields) })).filter((s) => s.col >= 0);
         const solo = !subs.length;
+        const list = subs.map((s) => ({ key: s.key, summary: s.fields?.summary ?? "", status: s.fields?.status?.name ?? "", ...place(s.fields) })).filter((s) => s.col >= 0);
         if (solo) list.push({ key, summary: j.fields?.summary ?? "", status: j.fields?.status?.name ?? "", ...place(j.fields) });
         const st = j.fields?.status;
         const cur = CAT[st?.statusCategory?.key] ?? -1;
         const status = st?.name ?? "";
         const blocked = cur !== 2 && stopped.test(status);
-        this.issues[key] = { status, summary: j.fields?.summary ?? "", counts, cols, names, cur, curCol: column(st), done, blocked, blockedCols, board: bd.name, solo, subs: list };
-        // who moved since the last look: the story itself, then each subtask
-        const watch = [{ key, summary: j.fields?.summary ?? "", status, cat: cur }, ...(solo ? [] : subs.map((s) => ({ key: s.key, summary: s.fields?.summary ?? "", status: s.fields?.status?.name ?? "", cat: CAT[s.fields?.status?.statusCategory?.key] ?? -1 })))];
+        // who moved since the last look: the story itself, then each subtask. A key seen for the first time asks
+        // whether an agent left its mark, so the robot shows from the start
+        const watch = [{ key, summary: j.fields?.summary ?? "", status, cat: cur }, ...(solo ? [] : list.map((s) => ({ key: s.key, summary: s.summary, status: s.status, cat: s.cat })))];
         for (const w of watch) {
           const before = this.seen[w.key];
+          if (before === undefined && w.cat !== 2) await this.moverOf(host, headers, w.key);
           if (before !== undefined && before !== w.status && w.status) {
-            this.moves.push({ key: w.key, story: key, summary: w.summary, from: before, to: w.status, blocked: w.cat !== 2 && stopped.test(w.status), done: w.cat === 2 });
+            const by = await this.moverOf(host, headers, w.key);
+            this.moves.push({ kind: "move", key: w.key, story: key, summary: w.summary, from: before, to: w.status, blocked: w.cat !== 2 && stopped.test(w.status), done: w.cat === 2, by: by && by.status === w.status ? by.by : null });
           }
           if (w.status) this.seen[w.key] = w.status;
         }
+        // stopped ones: since when, and one more notice once they pass `staleHours`
+        const ages = {};
+        for (const w of watch) {
+          if (w.cat === 2 || !stopped.test(w.status)) continue;
+          const at = await this.sinceOf(host, headers, w.key, w.status);
+          ages[w.key] = at;
+          const tag = `${w.status}@${at}`;
+          if (at && Date.now() - at > staleMs && this.stale[w.key] !== tag) {
+            const first = this.stale[w.key] === undefined && !this.started;
+            this.stale[w.key] = tag;
+            if (!first) this.moves.push({ kind: "stale", key: w.key, story: key, summary: w.summary, from: w.status, to: w.status, blocked: true, done: false, by: null, age: Date.now() - at });
+          }
+        }
+        const sub = list.map((s) => {
+          const m = this.byOf(s.key, s.status);
+          return { ...s, since: ages[s.key] ?? null, by: m?.by ?? null, at: m?.at ?? null };
+        });
+        const me = this.byOf(key, status);
+        this.issues[key] = { status, summary: j.fields?.summary ?? "", counts, cols, names, cur, curCol: column(st), done, blocked, blockedCols, board: bd.name, since: ages[key] ?? null, by: me?.by ?? null, solo, subs: sub };
         found++;
       }
+      this.started = true;
       this.note = `Jira: ${found}/${keys.length} ${t.jiraTickets}`;
     } catch (e) {
       /** @type {any} */
       const err = e;
       this.note = `Jira: ${String(err?.message ?? err).slice(0, 80)}`;
     }
+  }
+
+  /**
+   * What Jira assigns to the person and no development works on: the reception's list.
+   * `cfg.pendingJql` replaces the default query. Returns null when Jira cannot be read.
+   */
+  async pending(cfg, exclude = []) {
+    if (!cfg.jira) return null;
+    const jql = cfg.pendingJql || "assignee = currentUser() AND statusCategory != Done AND issuetype not in subTaskIssueTypes() ORDER BY priority DESC, updated DESC";
+    try {
+      const headers = { ...(await this.headers(cfg)), "Content-Type": "application/json" };
+      const r = await fetch(`${this.host(cfg)}/rest/api/3/search/jql`, { method: "POST", headers, body: JSON.stringify({ jql, fields: ["summary", "status", "priority", "issuetype"], maxResults: 40 }) });
+      if (r.status === 401) { this.auth = null; return null; }
+      if (!r.ok) return null;
+      /** @type {any} */
+      const j = await r.json();
+      const skip = new Set(exclude);
+      return (j.issues ?? []).filter((i) => !skip.has(i.key)).map((i) => ({
+        key: i.key, summary: i.fields?.summary ?? "", status: i.fields?.status?.name ?? "", cat: CAT[i.fields?.status?.statusCategory?.key] ?? -1,
+        priority: i.fields?.priority?.name ?? "", rank: Number(i.fields?.priority?.id) || 3, type: i.fields?.issuetype?.name ?? "",
+      }));
+    } catch (_e) { return null; }
+  }
+
+  /** The column a ticket goes to when work starts on it: the board's second column, or Jira's "in progress". */
+  async startColumn(cfg, key, t) {
+    try {
+      const host = this.host(cfg), headers = await this.headers(cfg);
+      const bd = await this.board(host, headers, key.slice(0, key.lastIndexOf("-")), cfg);
+      return bd.columns && bd.columns.length > 1 ? bd.columns[1].name : (t.catNames ?? [])[1] ?? "In Progress";
+    } catch (_e) { return (t.catNames ?? [])[1] ?? "In Progress"; }
+  }
+
+  /** Moves a ticket into the start column: the transition whose target the board puts there, else the first one into "in progress". */
+  async startWork(cfg, key) {
+    const host = this.host(cfg), headers = await this.headers(cfg), stopped = this.stopped(cfg);
+    const bd = await this.board(host, headers, key.slice(0, key.lastIndexOf("-")), cfg);
+    const r = await fetch(`${host}/rest/api/3/issue/${key}/transitions`, { headers });
+    if (!r.ok) return false;
+    /** @type {any} */
+    const j = await r.json();
+    const list = j.transitions ?? [];
+    const ids = bd.columns && bd.columns.length > 1 ? bd.columns[1].ids : null;
+    const pick = (ids && list.find((x) => ids.has(String(x.to?.id)))) ?? list.find((x) => x.to?.statusCategory?.key === "indeterminate" && !stopped.test(x.to?.name ?? ""));
+    if (!pick) return false;
+    const w = await fetch(`${host}/rest/api/3/issue/${key}/transitions`, { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ transition: { id: pick.id } }) });
+    return w.ok;
   }
 }
 
