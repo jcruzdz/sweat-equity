@@ -55,6 +55,8 @@ Then add the two keys in `keys.json` to your own `~/.config/herdr-app/keys.json`
 
 **Step inside a floor.** Click its sign. Each room is a squad: the agents whose branch carries the same ticket, sitting with the helpers they started. Agents working without a ticket share one room; idle agents rest in the lounge. Each coworker's label shows who they are and what they are on, and one of them at a time says it in full. The team list repeats it as text, with time and tokens for helpers. Click anyone to jump to their terminal. `← Tower` goes back.
 
+![Inside a floor: one room per ticket, the lounge below](office.png)
+
 **Hide a floor.** The eye on a floor's sign hides it: the floor leaves the tower, and its windows, alerts and counts leave with it (the sidebar line too). Nothing on screen says that something is hidden; only the moon reacts, with a pointer and a tooltip when you hover it. While a floor is hidden, the moon is a button: click it and the hidden floors come back as empty, muted floors marked `Hidden`; the eye on one brings it back for good, and another click on the moon hides the rest again. Showing them is not saved: after a restart, hidden floors are hidden.
 
 **Present.** `Present` removes the editing controls (eye, pen, `+ new`), the spare floor and whoever waits outside, so only the tower is left. `Stop presenting` brings them back. Hidden floors stay hidden either way.
@@ -77,7 +79,9 @@ Then add the two keys in `keys.json` to your own `~/.config/herdr-app/keys.json`
 
 ## Ticket whiteboards (optional, Jira Cloud)
 
-Each squad room has a whiteboard. Connect Jira and it shows the ticket's status and title, and one card per subtask in three columns: to do, in progress, done. Clicking the whiteboard opens the ticket in your browser.
+Each squad room has a whiteboard. Connect Jira and it shows the ticket's status and title, and one card per subtask in three columns: to do, in progress, done. Clicking the whiteboard opens the ticket's panel: its board with one post-it per subtask in the board's own columns (stopped ones in red, with how long), who moved each one, the branch's PR and its checks, the squad, and `Open in Jira`.
+
+![A ticket's panel: its board, the PR, the squad and who is waiting](jira.png)
 
 1. Create an API token at id.atlassian.com (Security, API tokens).
 2. Store it in the macOS keychain. The command asks for the token and nothing is written to a file:
