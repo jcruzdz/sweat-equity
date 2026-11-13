@@ -91,6 +91,8 @@ All optional, in `~/.config/herdr-app/sweat-equity.json`. The file is read when 
 | `lang` | `"en"` (default) or `"es"` |
 | `jira` | your Jira Cloud address; turns the whiteboards on |
 | `keychain` | name of the keychain entry with the token (default `herdr-jira`) |
+| `jiraBoards` | `{ "PROJ": 12 }`: which board's columns a project uses, when it has several (default: its first kanban board). The columns and which status goes in each are always read from that board, never set here |
+| `jiraBlocked` | a regex for the status names that mean stopped (default `deten\|bloque\|blocked\|hold\|impedi\|paus\|espera`): they stay in their column, in red |
 | `workspaces` | a starting list, `[{ "name", "root", "color" }]`, used only until you add or change a floor in the tower |
 | `demo` | `true` always shows the sample tower |
 | `frame` | `[width, height]` draws the tower in a box of that size, for screenshots |
@@ -107,7 +109,7 @@ A space on another machine joins the same floor when its folder sits at the same
 - The settings file above, and its own state through Herdr.
 - `find`, three folders deep in a workspace folder, to list its repositories when you click `+ new`.
 - `hc read`, the last 40 lines of each agent's screen on the floor you are inside, every 6 seconds, to find the helpers it lists there.
-- With Jira on: `security` to read the token from the keychain (kept in memory only), and requests to your Jira address for the tickets on screen, every two minutes. Nothing else leaves your computer.
+- With Jira on: `security` to read the token from the keychain (kept in memory only), and requests to your Jira address for the tickets on screen and their project's board, every minute. When a ticket or subtask changes status, the sidebar line posts a notification (a stopped one as a warning). Nothing else leaves your computer.
 - It writes one file, `mods/sweat-equity/.debug.json`: a snapshot of what the tower shows, for troubleshooting.
 
 ## If something looks wrong

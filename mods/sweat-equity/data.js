@@ -28,6 +28,7 @@ export const TEXT = {
     editFloor: "Edit floor", nameLabel: "Name", rename: "Rename", colorLabel: "Color", folderLabel: "Folder", change: "Change…", hideFloor: "Hide this floor", showFloor: "Show this floor again", ghost: "Hidden", peekOn: "Show hidden floors", peekNone: "Nothing hidden", peekHint: "the eye on a floor hides it", peekOff: "Hide them again",
     removeFloor: "Remove floor", sure: "Remove it for good", goSpace: "Go to the space", moveTo: "Move to", sendTo: "Send to", noFloor: "Leave without a floor", auto: "Back to automatic",
     ownFloor: "A floor of its own, from its folder", outside: "no floor", team: "Team", inLounge: "In the lounge", enterHint: "Enter starts · Esc closes the tower", colNames: ["TO DO", "DOING", "REVIEW", "DONE"], subsOf: "{d} of {n} subtasks", waitsYou: "{who} is waiting for you", reply: "Reply", noSubs: "no subtasks", openJira: "Open in Jira", noBoard: "No Jira data for this story yet", squad: "Squad", board: "Board", jira401: "Jira: 401, check the email and the token in the keychain",
+    catNames: ["To Do", "In Progress", "Done"], moved: "{key} moved: {from} → {to}", movedStopped: "{key} stopped: {from} → {to}",
     jiraNoKeys: "Jira connected · no branch carries a ticket key yet (like feature/ABC-12-name)",
   },
   es: {
@@ -42,6 +43,7 @@ export const TEXT = {
     editFloor: "Editar piso", nameLabel: "Nombre", rename: "Renombrar", colorLabel: "Color", folderLabel: "Carpeta", change: "Cambiar…", hideFloor: "Ocultar este piso", showFloor: "Volver a mostrar este piso", ghost: "Oculto", peekOn: "Ver pisos ocultos", peekNone: "Nada oculto", peekHint: "el ojo de cada piso lo oculta", peekOff: "Volver a ocultarlos",
     removeFloor: "Quitar piso", sure: "Quitarlo de verdad", goSpace: "Ir al space", moveTo: "Mover a", sendTo: "Mandar a", noFloor: "Dejar sin piso", auto: "Volver a automático",
     ownFloor: "Piso propio, con su carpeta", outside: "sin piso", team: "Equipo", inLounge: "En la sala", enterHint: "Enter inicia · Esc cierra el edificio", colNames: ["HACER", "CURSO", "REVIEW", "HECHO"], subsOf: "{d} de {n} subtareas", waitsYou: "{who} te espera", reply: "Responder", noSubs: "sin subtareas", openJira: "Abrir en Jira", noBoard: "Aún no hay datos de Jira para esta US", squad: "Escuadrón", board: "Tablero", jira401: "Jira: 401, revisa el correo y el token del llavero",
+    catNames: ["Por hacer", "En curso", "Hecho"], moved: "{key} se movió: {from} → {to}", movedStopped: "{key} se detuvo: {from} → {to}",
     jiraNoKeys: "Jira conectado · ninguna rama trae clave de US todavía (como feature/ABC-12-nombre)",
   },
 };
@@ -132,7 +134,7 @@ function shortMachine(m) {
   return s.length > 12 ? s.slice(0, 11) + "…" : s;
 }
 
-/** Optional `~/.config/herdr-app/sweat-equity.json`: { lang, jira, keychain, workspaces, demo, frame }. */
+/** Optional `~/.config/herdr-app/sweat-equity.json`: { lang, jira, keychain, jiraBoards, jiraBlocked, workspaces, demo, frame }. */
 export async function loadConfig() {
   try {
     const text = await readTextFile(`${appHome()}/sweat-equity.json`);
@@ -231,7 +233,7 @@ export function liveOffice(floor, issues, t, crew = {}) {
   /** @type {any[]} */
   const rooms = [...byKey.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map((key) => {
     const list = byKey.get(key), issue = issues[key];
-    return { key, title: issue?.summary ?? "", statusText: issue?.status ?? "", counts: issue?.counts ?? null, cols: issue?.cols ?? null, curCol: issue?.curCol ?? -1, cur: issue?.cur ?? -1, agents: list, more: Math.max(0, list.length - SEATS) };
+    return { key, title: issue?.summary ?? "", statusText: issue?.status ?? "", counts: issue?.counts ?? null, cols: issue?.cols ?? null, names: issue?.names ?? null, blocked: issue?.blocked ?? false, blockedCols: issue?.blockedCols ?? null, curCol: issue?.curCol ?? -1, cur: issue?.cur ?? -1, agents: list, more: Math.max(0, list.length - SEATS) };
   });
   const general = people.filter((p) => !p.key && (p.state === "working" || p.state === "blocked" || p.sub));
   if (general.length) rooms.push({ key: t.general, title: t.generalTitle, statusText: "", counts: null, cur: -1, agents: general, more: Math.max(0, general.length - SEATS), general: true });
@@ -269,12 +271,27 @@ export function demoOffice(floor, t) {
 }
 
 // ---- Jira (optional): status, title and subtasks of each ticket on screen
+//
+// The columns are the ones on each project's Jira board (Agile API), read once in a while and never
+// written here: a status lands in the column that lists its id. Without a board (no Jira Software, no
+// access) the fallback is Jira's own three categories, named by Jira. A status is "stopped" when the
+// config's `jiraBlocked` (a regex) or the default one matches its name: it keeps its column and turns red.
+
+const CAT = { new: 0, indeterminate: 1, done: 2 };
+const BOARD_TTL = 30 * 60 * 1000;
+const BLOCKED = /deten|bloque|blocked|on hold|hold\b|impedi|paus|espera/i;
 
 export class Jira {
   constructor() {
     this.auth = null;
-    /** @type {Record<string, { status: string, summary: string, counts: number[], cols: number[], cur: number, curCol: number, solo?: boolean, subs: { key: string, summary: string, status: string, col: number }[] } | null>} */
+    /** @type {Record<string, { status: string, summary: string, counts: number[], cols: number[], names: string[], cur: number, curCol: number, done: number, blocked: boolean, blockedCols: boolean[], board: string, solo?: boolean, subs: { key: string, summary: string, status: string, col: number, blocked: boolean }[] } | null>} */
     this.issues = {};
+    /** project key -> { at, name, columns: { name, ids: Set<string> }[] | null } */
+    this.boards = {};
+    /** last status seen per issue key (stories and subtasks), to tell who moved */
+    this.seen = {};
+    /** @type {{ key: string, story: string, summary: string, from: string, to: string, blocked: boolean, done: boolean }[]} moves found by the last sync */
+    this.moves = [];
     this.note = "";
   }
 
@@ -290,10 +307,48 @@ export class Jira {
     return this.auth;
   }
 
-  /** @param {{ jira?: string, keychain?: string }} cfg @param {string[]} keys @param {Record<string, string>} t */
+  /**
+   * The project's board columns, as Jira lists them. `cfg.jiraBoards` ({ PROJ: boardId }) picks one
+   * when a project has several; otherwise the first board Jira returns for the project.
+   */
+  async board(host, headers, project, cfg) {
+    const old = this.boards[project];
+    if (old && Date.now() - old.at < BOARD_TTL) return old;
+    const entry = { at: Date.now(), name: "", columns: null };
+    try {
+      let id = cfg.jiraBoards?.[project];
+      if (!id) {
+        const r = await fetch(`${host}/rest/agile/1.0/board?projectKeyOrId=${encodeURIComponent(project)}&maxResults=50`, { headers });
+        if (r.ok) {
+          /** @type {any} */
+          const j = await r.json();
+          const list = j.values ?? [];
+          id = (list.find((b) => b.type === "kanban" || b.type === "simple") ?? list[0])?.id;
+        }
+      }
+      if (id) {
+        const r = await fetch(`${host}/rest/agile/1.0/board/${id}/configuration`, { headers });
+        if (r.ok) {
+          /** @type {any} */
+          const j = await r.json();
+          const cols = (j.columnConfig?.columns ?? []).map((c) => ({ name: String(c.name ?? ""), ids: new Set((c.statuses ?? []).map((s) => String(s.id))) })).filter((c) => c.ids.size);
+          if (cols.length) { entry.columns = cols; entry.name = String(j.name ?? ""); }
+        }
+      }
+    } catch (_e) { /* no board: the categories will do */ }
+    // a failed read is kept a short while only, so a fix in Jira shows up soon
+    if (!entry.columns) entry.at = Date.now() - BOARD_TTL + 5 * 60 * 1000;
+    this.boards[project] = entry;
+    return entry;
+  }
+
+  /** @param {{ jira?: string, keychain?: string, jiraBoards?: Record<string, number>, jiraBlocked?: string }} cfg @param {string[]} keys @param {Record<string, string>} t */
   async sync(cfg, keys, t) {
+    this.moves = [];
     if (!cfg.jira) { this.note = ""; return; }
     const host = cfg.jira.replace(/\/+$/, "");
+    let stopped = BLOCKED;
+    try { if (cfg.jiraBlocked) stopped = new RegExp(cfg.jiraBlocked, "i"); } catch (_e) { /* a bad pattern: keep the default */ }
     try {
       const headers = { Authorization: await this.credentials(cfg.keychain || "herdr-jira"), Accept: "application/json" };
       if (!keys.length) {
@@ -303,7 +358,6 @@ export class Jira {
         this.note = r.status === 401 ? t.jira401 : r.ok ? t.jiraNoKeys : `Jira: HTTP ${r.status}`;
         return;
       }
-      const CAT = { new: 0, indeterminate: 1, done: 2 };
       let found = 0;
       for (const k of Object.keys(this.issues)) if (!keys.includes(k)) delete this.issues[k];   // stories that left the tower
       for (const key of keys) {
@@ -314,25 +368,53 @@ export class Jira {
         if (!r.ok) continue;
         /** @type {any} */
         const j = await r.json();
-        const cur = CAT[j.fields?.status?.statusCategory?.key] ?? -1;
-        const counts = [0, 0, 0];
-        // the board has four columns: to do, in progress, review, done. Jira only has three categories, so "review" is told by the status name.
-        const cols = [0, 0, 0, 0], REVIEW = /review|revis|qa\b|test|valid|verif/i;
-        const subs = j.fields?.subtasks ?? [];
+        const project = key.slice(0, key.lastIndexOf("-"));
+        const bd = await this.board(host, headers, project, cfg);
+        const names = bd.columns ? bd.columns.map((c) => c.name) : (t.catNames ?? ["To Do", "In Progress", "Done"]);
+        const last = names.length - 1;
+        /** the board column of a status: the one that lists its id; a status the board leaves out goes by its category */
+        const column = (st) => {
+          const c = CAT[st?.statusCategory?.key];
+          if (bd.columns) {
+            const i = bd.columns.findIndex((col) => col.ids.has(String(st?.id)));
+            if (i >= 0) return i;
+            if (c === undefined) return -1;
+            return c === 2 ? last : c === 0 ? 0 : Math.min(1, last);
+          }
+          return c === undefined ? -1 : c;
+        };
+        const counts = [0, 0, 0], cols = names.map(() => 0), blockedCols = names.map(() => false);
+        let done = 0;
         const place = (f) => {
           const c = CAT[f?.status?.statusCategory?.key];
-          if (c === undefined) return -1;
+          const k = column(f?.status);
+          if (c === undefined || k < 0) return { col: -1, blocked: false };
           counts[c]++;
-          const k = c === 2 ? 3 : c === 1 && REVIEW.test(f.status.name ?? "") ? 2 : c;
+          if (c === 2) done++;
           cols[k]++;
-          return k;
+          const blocked = c !== 2 && stopped.test(f.status.name ?? "");
+          if (blocked) blockedCols[k] = true;
+          return { col: k, blocked };
         };
+        const subs = j.fields?.subtasks ?? [];
         /** each subtask with its column, for the board panel */
-        const list = subs.map((s) => ({ key: s.key, summary: s.fields?.summary ?? "", status: s.fields?.status?.name ?? "", col: place(s.fields) })).filter((s) => s.col >= 0);
+        const list = subs.map((s) => ({ key: s.key, summary: s.fields?.summary ?? "", status: s.fields?.status?.name ?? "", ...place(s.fields) })).filter((s) => s.col >= 0);
         const solo = !subs.length;
-        if (solo) list.push({ key, summary: j.fields?.summary ?? "", status: j.fields?.status?.name ?? "", col: place(j.fields) });
-        const curCol = cur === 2 ? 3 : cur === 1 && REVIEW.test(j.fields?.status?.name ?? "") ? 2 : cur;
-        this.issues[key] = { status: j.fields?.status?.name ?? "", summary: j.fields?.summary ?? "", counts, cols, cur, curCol, solo, subs: list.filter((s) => s.col >= 0) };
+        if (solo) list.push({ key, summary: j.fields?.summary ?? "", status: j.fields?.status?.name ?? "", ...place(j.fields) });
+        const st = j.fields?.status;
+        const cur = CAT[st?.statusCategory?.key] ?? -1;
+        const status = st?.name ?? "";
+        const blocked = cur !== 2 && stopped.test(status);
+        this.issues[key] = { status, summary: j.fields?.summary ?? "", counts, cols, names, cur, curCol: column(st), done, blocked, blockedCols, board: bd.name, solo, subs: list };
+        // who moved since the last look: the story itself, then each subtask
+        const watch = [{ key, summary: j.fields?.summary ?? "", status, cat: cur }, ...(solo ? [] : subs.map((s) => ({ key: s.key, summary: s.fields?.summary ?? "", status: s.fields?.status?.name ?? "", cat: CAT[s.fields?.status?.statusCategory?.key] ?? -1 })))];
+        for (const w of watch) {
+          const before = this.seen[w.key];
+          if (before !== undefined && before !== w.status && w.status) {
+            this.moves.push({ key: w.key, story: key, summary: w.summary, from: before, to: w.status, blocked: w.cat !== 2 && stopped.test(w.status), done: w.cat === 2 });
+          }
+          if (w.status) this.seen[w.key] = w.status;
+        }
         found++;
       }
       this.note = `Jira: ${found}/${keys.length} ${t.jiraTickets}`;

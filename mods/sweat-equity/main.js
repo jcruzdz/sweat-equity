@@ -8,14 +8,14 @@
 
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, v_flex, InputState, Input } from "gpui-base";
-import { props, run, closeOverlay, pickFolder, exec, theme, spaces, knownAgents, hc, shared, window as appWindow } from "herdr";
+import { props, run, closeOverlay, pickFolder, exec, theme, spaces, knownAgents, hc, shared, notify, window as appWindow } from "herdr";
 import { Scene, INK, ALERT, STATUS, col } from "./scene.js";
 import { buildFacade, facadeScale, stackOf } from "./facade.js";
 import { buildOffice, officeFit } from "./office.js";
 import { TEXT, COLORS, loadConfig, loadState, saveState, liveTower, liveOffice, demoTower, demoOffice, Jira, writeDebug, fromHome, toAbs, findRepos, parseCrew, allowProjects } from "./data.js";
 
 const BAR_H = 44, FOOT_H = 26, ROSTER_W = 312, ROSTER_H = 236;
-const VERSION = "1.4.0-dev";
+const VERSION = "1.4.1-dev";
 const PANEL = "#0f1436", LINE = "#56608f", SOFT = "#c9d6e0", DIM = "#94b0c2", PAPER = "#f4f4f8", PICK = "#1c2452", CLEAR = "#00000000";
 
 export default class SweatEquity extends View {
@@ -44,19 +44,25 @@ export default class SweatEquity extends View {
     this.rename = InputState.new({ value: "" });          // a floor's name, while it is edited
     this.message.on("submit", () => this.start());
     this.rename.on("submit", () => this.renameFloor());
-    const tower = (initProps?.role ?? props()?.role) !== "mini";   // only the tower talks to Jira and reads screens
+    const tower = (initProps?.role ?? props()?.role) !== "mini";   // the tower draws Jira's boards and reads screens; the mini line, always on screen, tells who moved
     writeDebug({ version: VERSION, at: Date.now(), started: tower ? "tower" : "mini" });   // proof that this build loaded
     cx.spawn(async (cx) => {
       this.cfg = await loadConfig();
       this.ready = true;
       cx.notify();
-      if (!tower) return;
+      if (!tower) {
+        // the sidebar line stays on screen with the tower closed: it watches the tickets and says when one moves
+        await cx.sleep(2500);
+        await this.watchJira();
+        cx.timer.every(60000, async (cx) => { if (await this.watchJira()) cx.notify(); });
+        return;
+      }
       await cx.sleep(1500);
       await this.syncJira();
       cx.notify();
     });
     if (tower) {
-      cx.timer.every(120000, async (cx) => {
+      cx.timer.every(60000, async (cx) => {
         await this.syncJira();
         cx.notify();
       });
@@ -72,6 +78,23 @@ export default class SweatEquity extends View {
 
   async syncJira() {
     try { await this.jira.sync(this.cfg, this.keys, this.t()); } catch (_e) { /* the note already says why */ }
+  }
+
+  /** The sidebar's watch: the tickets of every visible development, and a notice for each status that changed in Jira. */
+  async watchJira() {
+    if (!this.ready || !this.cfg.jira) return false;
+    const st = loadState(this.cfg);
+    if (st.demo) return false;
+    this.keys = [...new Set(liveTower(st).floors.flatMap((f) => f.spaces.flatMap((d) => d.keys)))];
+    await this.syncJira();
+    const t = this.t();
+    for (const m of this.jira.moves) {
+      const line = (m.blocked ? t.movedStopped : t.moved).replace("{key}", m.key).replace("{from}", m.from).replace("{to}", m.to);
+      try {
+        notify({ title: line, body: m.key === m.story ? m.summary : `${m.story} · ${m.summary}`, level: m.blocked ? "warning" : m.done ? "success" : "info", timeout: m.blocked ? 20000 : 8000 });
+      } catch (_e) { /* no toast mod: the tower still shows it */ }
+    }
+    return this.jira.moves.length > 0;
   }
 
   /** Reads the screen of each agent on the floor being shown, for the helpers it lists there. */
@@ -308,24 +331,29 @@ export default class SweatEquity extends View {
       const R = office?.rooms?.find((r) => r.key === P.key);
       if (!R) { this.panel = null; return null; }
       // Jira's data when there is some; otherwise what the room already knows (the sample, or the counts it carried)
-      const iss = this.jira.issues[R.key] ?? (R.cols ? { status: R.statusText, summary: R.title, cols: R.cols, curCol: R.curCol, solo: false, subs: [] } : null), names = t.colNames;
-      const POSTIT = ["#f6e7a6", "#ffd7b0", "#dccbff", "#bdeccc"], TOP = (c) => (c === iss?.curCol ? "#e2532f" : LINE);
+      const iss = this.jira.issues[R.key] ?? (R.cols ? { status: R.statusText, summary: R.title, cols: R.cols, names: R.names, curCol: R.curCol, done: R.cols[R.cols.length - 1], blocked: R.blocked, solo: false, subs: [] } : null);
+      // the columns are the Jira board's own; the sample keeps the four of the design
+      const names = iss?.names ?? t.colNames, last = names.length - 1;
+      const POSTIT = ["#f6e7a6", "#ffd7b0", "#dccbff", "#bdeccc"], STOP = "#ff8a80", RED = "#e2532f";
+      const tint = (c) => (c === last ? POSTIT[3] : POSTIT[Math.min(c, 2)]);
+      const TOP = (c) => (c === iss?.curCol ? (iss?.blocked ? "#ff3b30" : RED) : LINE);
       const total = iss ? iss.cols.reduce((p, q) => p + q, 0) : 0;
       const head = v_flex().gap(4)
         .child(h_flex().gap(8).items_center().text_size(11.5)
           .child(div().font_bold().text_color(col("#ffb08a")).child(R.key))
-          .child(div().px(8).py(1).rounded(10).border(1).border_color(col(LINE)).text_color(col(SOFT)).child(`Jira · ${iss?.status ?? "…"}`))
-          .child(div().text_color(col(DIM)).child(iss ? (iss.solo ? t.noSubs : t.subsOf.replace("{d}", String(iss.cols[3])).replace("{n}", String(total))) : (this.jira.note || t.noBoard))))
+          .child(div().px(8).py(1).rounded(10).border(1).border_color(col(iss?.blocked ? "#ff3b30" : LINE)).bg(col(iss?.blocked ? "#4a1414" : CLEAR)).text_color(col(iss?.blocked ? "#ffd2cc" : SOFT)).child(`Jira · ${iss?.status ?? "…"}`))
+          .child(div().text_color(col(DIM)).child(iss ? (iss.solo ? t.noSubs : t.subsOf.replace("{d}", String(iss.done ?? iss.cols[last])).replace("{n}", String(total))) : (this.jira.note || t.noBoard))))
         .child(div().text_size(16).font_bold().text_color(col(PAPER)).child(iss?.summary || R.title || R.key));
       const board = h_flex().gap(6).items_start().children(names.map((nm, c) => {
         const list = iss ? iss.subs.filter((s) => s.col === c) : [];
         return v_flex().flex_1().min_w(0).gap(6).p(6).rounded(6).bg(col(PICK)).border_t(3).border_color(col(TOP(c)))
           .child(div().text_size(11).font_bold().text_color(col(PAPER)).child(`${nm} `).child(div().text_color(col(DIM)).font_normal().child(String(list.length))))
-          .children(list.map((s, i) => v_flex().id(`se-sub-${c}-${i}`).gap(3).p(7).rounded(3).bg(col(POSTIT[c])).cursor_pointer()
+          .children(list.map((s, i) => v_flex().id(`se-sub-${c}-${i}`).gap(3).p(7).rounded(3).bg(col(s.blocked ? STOP : tint(c))).cursor_pointer()
+            .border_l(s.blocked ? 4 : 0).border_color(col("#c62828"))
             .hover((x) => x.opacity(0.85)).tooltip(`${s.key} · ${s.summary}\n${s.status}`)
             .on_click(() => this.openKey(s.key))
             .child(div().text_size(11.5).font_semibold().text_color(col(INK)).child(s.summary))
-            .child(div().text_size(9.5).text_color(col("#5c6078")).child(s.key))));
+            .child(h_flex().gap(6).text_size(9.5).text_color(col("#5c6078")).child(s.key).children(s.status && (s.blocked || names.length <= 3 || s.status.toLowerCase() !== nm.toLowerCase()) ? [div().font_bold().text_color(col(s.blocked ? "#7a0f0f" : "#5c6078")).child(s.status)] : []))));
       }));
       // the squad: who is on it; whoever waits for you gets a banner with the way to answer
       const waiting = R.agents.filter((a) => a.state === "blocked");
@@ -540,7 +568,7 @@ export default class SweatEquity extends View {
       });
     }
     const now = Date.now();
-    const sig = [k, this.view, st.demo, st.presenting, this.peek, st.hidden.join(","), this.size.width, this.size.height, sc.items.length, this.jira.note, Object.values(this.jira.issues).map((i) => i?.cols?.join(".") ?? "-").join(","), this.panel?.kind, this.outer?.width, this.outer?.height].join("|");
+    const sig = [k, this.view, st.demo, st.presenting, this.peek, st.hidden.join(","), this.size.width, this.size.height, sc.items.length, this.jira.note, Object.values(this.jira.issues).map((i) => i ? `${i.status}:${i.cols.join(".")}` : "-").join(","), this.panel?.kind, this.outer?.width, this.outer?.height].join("|");
     if (sig !== this.lastSig || now - this.lastDebug > 5000) {
       this.lastDebug = now;
       this.lastSig = sig;
