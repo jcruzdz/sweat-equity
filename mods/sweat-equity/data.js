@@ -297,12 +297,21 @@ export function demoLive() {
   };
 }
 
+// the sample story's subtasks, so the sample's board has post-its: one stopped, one moved by an agent a moment ago
+const demoSubs = () => [
+  { key: "APP-160", summary: "Error copy for a wrong PIN", status: "To do", col: 0 },
+  { key: "APP-143", summary: "PIN endpoint with rate limit", status: "In progress", col: 1, by: "backend", at: Date.now() - 4 * 60000 },
+  { key: "APP-144", summary: "PIN screen on the transfer flow", status: "On hold", col: 1, blocked: true, since: Date.now() - 26 * 3600000 },
+  { key: "APP-145", summary: "Carrier API contract", status: "Done", col: 3 },
+  { key: "APP-146", summary: "Audit log for transfers", status: "Done", col: 3, by: "docs" },
+];
+
 export function demoOffice(floor, t) {
   const room = (key, title, statusText, counts, cur, list, cols = [counts[0], counts[1], 0, counts[2]], curCol = cur === 2 ? 3 : cur) => ({ key, title, statusText, counts, cols, curCol, cur, agents: list, more: 0 });
   return {
     name: floor.name, color: floor.color,
     rooms: [
-      room("APP-142", "Validate the PIN on number transfer", "In progress", [1, 2, 2], 1, [demoAgent("a1", "qa", "blocked"), demoAgent("a2", "backend", "working"), demoAgent("a3", "mobile-app", "working"), demoAgent("a4", "docs", "done")]),
+      { ...room("APP-142", "Validate the PIN on number transfer", "In progress", [1, 2, 2], 1, [demoAgent("a1", "qa", "blocked"), demoAgent("a2", "backend", "working"), demoAgent("a3", "mobile-app", "working"), demoAgent("a4", "docs", "done")]), subs: demoSubs() },
       room("APP-151", "Top up with a saved card", "In review", [0, 3, 3], 1, [demoAgent("a5", "backend", "done"), demoAgent("a6", "mobile-app", "working"), demoAgent("a7", "qa", "working")], [0, 1, 2, 3], 2),
       room("APP-158", "eSIM activation", "To do", [4, 0, 0], 0, [demoAgent("a8", "backend", "blocked"), demoAgent("a9", "infra", "idle")]),
     ],

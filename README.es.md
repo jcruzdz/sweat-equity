@@ -57,6 +57,8 @@ Después agrega las dos teclas de `keys.json` a tu `~/.config/herdr-app/keys.jso
 
 **Entrar a un piso.** Clic en su letrero. Cada cuarto es un equipo: los agentes cuya rama trae la misma historia, sentados con los ayudantes que lanzaron. Los que trabajan sin historia comparten un cuarto; los que están libres descansan en la sala. La etiqueta de cada compañero dice quién es y en qué anda, y uno a la vez lo dice completo. La lista del equipo lo repite en texto, con tiempo y tokens para los ayudantes. Un clic en cualquiera te lleva a su terminal. `← Edificio` regresa.
 
+![Dentro de un piso: un cuarto por historia, la sala abajo](office.png)
+
 **Ocultar un piso.** El ojo del letrero lo oculta: el piso sale del edificio y sus ventanas, alertas y conteos se van con él (también de la línea del costado). Nada en pantalla dice que hay algo oculto; solo la luna reacciona, con cursor y aviso al pasar sobre ella. Mientras haya un piso oculto, la luna es un botón: un clic y los pisos ocultos regresan como pisos vacíos y atenuados, marcados `Oculto`; el ojo de uno lo devuelve para siempre y otro clic en la luna vuelve a ocultar los demás. Eso no se guarda: al reiniciar, los pisos ocultos siguen ocultos.
 
 **Presentar.** `Presentar` quita los controles de edición (ojo, lápiz, `+ nuevo`), el piso disponible y a quien espera afuera, para que solo quede el edificio. `Salir de presentar` los regresa. Los pisos ocultos siguen ocultos con o sin presentar.
@@ -79,7 +81,9 @@ Después agrega las dos teclas de `keys.json` a tu `~/.config/herdr-app/keys.jso
 
 ## Pizarras con tus historias (opcional, Jira Cloud)
 
-Cada cuarto de equipo tiene una pizarra. Con Jira conectado muestra el estado y el título de la historia, y una tarjeta por subtarea en tres columnas: por hacer, en curso, hecho. Un clic en la pizarra abre la historia en tu navegador.
+Cada cuarto de equipo tiene una pizarra. Con Jira conectado muestra el estado y el título de la historia, y una tarjeta por subtarea en tres columnas: por hacer, en curso, hecho. Un clic en la pizarra abre el panel de la historia: su tablero con un post-it por subtarea en las columnas del propio tablero (las detenidas en rojo, con cuánto llevan), quién movió cada una, el PR de la rama y sus checks, el escuadrón y `Abrir en Jira`.
+
+![El panel de una historia: su tablero, el PR, el escuadrón y quién te espera](jira.png)
 
 1. Crea un token de API en id.atlassian.com (Seguridad, Tokens de API).
 2. Guárdalo en el llavero de macOS. El comando te pide el token y no se escribe en ningún archivo:

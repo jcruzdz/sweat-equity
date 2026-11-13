@@ -482,7 +482,7 @@ export default class SweatEquity extends View {
       const R = office?.rooms?.find((r) => r.key === P.key);
       if (!R) { this.panel = null; return null; }
       // Jira's data when there is some; otherwise what the room already knows (the sample, or the counts it carried)
-      const iss = this.jira.issues[R.key] ?? (R.cols ? { status: R.statusText, summary: R.title, cols: R.cols, names: R.names, curCol: R.curCol, done: R.cols[R.cols.length - 1], blocked: R.blocked, solo: false, subs: [] } : null);
+      const iss = this.jira.issues[R.key] ?? (R.cols ? { status: R.statusText, summary: R.title, cols: R.cols, names: R.names, curCol: R.curCol, done: R.cols[R.cols.length - 1], blocked: R.blocked, solo: false, subs: R.subs ?? [] } : null);
       // the columns are the Jira board's own; the sample keeps the four of the design
       const names = iss?.names ?? t.colNames, last = names.length - 1;
       const POSTIT = ["#f6e7a6", "#ffd7b0", "#dccbff", "#bdeccc"], STOP = "#ff8a80", RED = "#e2532f";
@@ -511,14 +511,14 @@ export default class SweatEquity extends View {
       const board = h_flex().gap(6).items_start().children(names.map((nm, c) => {
         const list = iss ? iss.subs.filter((s) => s.col === c) : [];
         return v_flex().flex_1().min_w(0).gap(6).p(6).rounded(6).bg(col(PICK)).border_t(3).border_color(col(TOP(c)))
-          .child(div().text_size(11).font_bold().text_color(col(PAPER)).child(`${nm} `).child(div().text_color(col(DIM)).font_normal().child(String(list.length))))
+          .child(h_flex().gap(5).text_size(11).font_bold().text_color(col(PAPER)).child(div().truncate().child(nm)).child(div().text_color(col(DIM)).font_normal().child(String(list.length))))
           .children(list.map((s, i) => v_flex().id(`se-sub-${c}-${i}`).gap(3).p(7).rounded(3).bg(col(s.blocked ? "#ff8a80" : tint(c))).cursor_pointer()
             .border_l(s.blocked ? 4 : 0).border_color(col("#c62828"))
             .when(!s.blocked && !!s.by && !!s.at && Date.now() - s.at < 10 * 60000, (el) => el.border(2).border_color(col(BLUE)))
             .hover((x) => x.opacity(0.85)).tooltip(`${s.key} · ${s.summary}\n${s.status}`)
-            .on_click(() => this.openKey(s.key))
+            .on_click(() => { if (!tower.demo) this.openKey(s.key); })
             .child(div().text_size(11.5).font_semibold().text_color(col(INK)).child(s.summary))
-            .child(h_flex().gap(6).items_center().text_size(9.5).text_color(col("#5c6078"))
+            .child(h_flex().flex_wrap().gap_x(6).gap_y(2).items_center().text_size(9.5).text_color(col("#5c6078"))
               .when(s.blocked && !!s.since, (el) => el.child(this.bars("#7a0f0f", 8)).child(div().font_bold().text_color(col("#4a1010")).child(fmtAge(Date.now() - s.since))))
               .when(!!s.by, (el) => el.child(svg(`${DIR}/icons/robot.svg`).size(11).text_color(col("#2b3a8f"))).child(div().font_semibold().text_color(col("#2b3a8f"))
                 .child(s.at ? `${s.by} · ${t.ago.replace("{t}", fmtAge(Date.now() - s.at))}` : s.by)))
@@ -529,14 +529,14 @@ export default class SweatEquity extends View {
       const waiting = R.agents.filter((a) => a.state === "blocked");
       const squad = h_flex().gap(6).flex_wrap().children(R.agents.map((a, i) => h_flex().id(`se-sq-${i}`).gap(6).px(8).h(24).items_center().rounded(5).bg(col(PICK)).cursor_pointer()
         .border(1).border_color(col(STATUS[a.state]?.color ?? LINE)).tooltip(a.doing || a.name).text_size(11.5).text_color(col(PAPER))
-        .on_click(() => { this.panel = null; this.go("agent.focus", { terminal: a.address }); })
+        .on_click(() => { if (tower.demo) return; this.panel = null; this.go("agent.focus", { terminal: a.address }); })
         .child(div().flex_none().w(8).h(8).rounded(4).bg(col(STATUS[a.state]?.color ?? DIM)))
         .child(div().truncate().max_w(170).child(a.name))));
       const banners = waiting.map((a, i) => h_flex().id(`se-wait-${i}`).gap(10).items_center().pl(12).pr(6).py(6).rounded(8).border(2).border_color(col("#ffb020")).bg(col("#3a2a10"))
         .child(div().flex_none().w(10).h(10).rounded(5).bg(col("#ffb020")))
         .child(div().flex_1().min_w(0).truncate().text_size(12).text_color(col(PAPER)).child(t.waitsYou.replace("{who}", a.name)))
-        .child(this.button(`se-reply-${i}`, t.reply, true, () => { this.panel = null; this.go("agent.focus", { terminal: a.address }); })));
-      const open = this.cfg.jira ? [this.button("se-open-jira", t.openJira, true, () => this.openKey(R.key))] : [];
+        .child(this.button(`se-reply-${i}`, t.reply, true, () => { if (tower.demo) return; this.panel = null; this.go("agent.focus", { terminal: a.address }); })));
+      const open = this.cfg.jira && !tower.demo ? [this.button("se-open-jira", t.openJira, true, () => this.openKey(R.key))] : [];
       if (pr?.url) open.push(this.button("se-open-pr", t.openPr.replace("{n}", String(pr.number)), false, () => this.openUrl(pr.url)));
       const moved = readLog().events.filter((e) => e.story === R.key && ["move", "stopped", "done", "stale"].includes(e.kind)).slice(0, 3);
       const recent = moved.length ? [this.section(t.recent), v_flex().gap(4).children(moved.map((e, i) => h_flex().id(`se-rec-${i}`).gap(10).items_center().px(8).py(6).rounded(4).bg(col("#161d45")).text_size(12)
@@ -844,7 +844,7 @@ export default class SweatEquity extends View {
       buildOffice(sc, fit, office, {
         t, spot: talking.length ? talking[this.spot % talking.length].id : null,
         onAgent: focus,
-        onIssue: !tools ? null : act((room, cx) => { if (!room.general) { this.panel = { kind: "issue", key: room.key }; cx?.notify?.(); } }),
+        onIssue: !tools && !(tower.demo && !st.presenting) ? null : act((room, cx) => { if (!room.general) { this.panel = { kind: "issue", key: room.key }; cx?.notify?.(); } }),
         onNew: tools ? act((cx) => this.openNew(floor.name, cx)) : null,
       });
       sceneW = fit.w * k; sceneH = fit.h * k;
