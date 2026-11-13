@@ -59,6 +59,20 @@ Then add the two keys in `keys.json` to your own `~/.config/herdr-app/keys.json`
 
 **Present.** `Present` removes the editing controls (eye, pen, `+ new`), the spare floor and whoever waits outside, so only the tower is left. `Stop presenting` brings them back. Hidden floors stay hidden either way.
 
+**See what Jira stopped.** A story stopped in Jira (or one of its subtasks) draws its window's blind half down, puts a red pause beacon over it and a pause sign on its chip; `⏸ N stopped` on the path takes you to the first one. Inside, a stopped post-it says for how long, and after `staleHours` you get one more notice.
+
+**PRs and CI.** The PR of each development's branch shows top left in its window: blue with a tick when its checks pass, orange with a cross when CI fails, purple once merged. Click it to open the PR. Each branch with CI failing adds a rain cloud to the sky.
+
+**Today's tokens.** The solar panels on the roof light up cell by cell with today's tokens (from Claude Code's session logs on this computer) against `tokenBudget`; past it they flicker.
+
+**Reception.** The badge at the reception desk counts what Jira assigns you that no development works on. Click it for the list; `Start` opens `+ new` filled from the ticket (a branch name and a first message) and, if you leave it ticked, moves the ticket to the board's working column.
+
+**Log.** `Log` on the bar lists what happened while you were away: Jira moves, agents that wait or finished, CI going red or green, merges. Its right side chooses which of them post a notice (stopped and finished, moves by agents, moves by people, quiet hours). Several moves of one story in the same minute make one notice. The sidebar line counts the stopped stories and the unseen events.
+
+**Moved by an agent.** When an agent moves a ticket it can say so by setting the issue property `sweat-equity.mover` to `{ "by": "qa-verificador", "status": "<the status it moved it to>", "at": <epoch ms> }` (`PUT /rest/api/3/issue/{key}/properties/sweat-equity.mover`). The post-it and the notice then show a robot and its name until the ticket moves on.
+
+**`?`** on the bar shows how to read the tower; it also opens by itself the first time.
+
 **Just looking?** `Sample` swaps in a made-up tower so you can see every state without any of your own names on screen.
 
 ## Ticket whiteboards (optional, Jira Cloud)
@@ -93,6 +107,12 @@ All optional, in `~/.config/herdr-app/sweat-equity.json`. The file is read when 
 | `keychain` | name of the keychain entry with the token (default `herdr-jira`) |
 | `jiraBoards` | `{ "PROJ": 12 }`: which board's columns a project uses, when it has several (default: its first kanban board). The columns and which status goes in each are always read from that board, never set here |
 | `jiraBlocked` | a regex for the status names that mean stopped (default `deten\|bloque\|blocked\|hold\|impedi\|paus\|espera`): they stay in their column, in red |
+| `staleHours` | how long a ticket may stay stopped before one more notice (default `24`) |
+| `quietHours` | `[from, to]`, hours with no notices when quiet hours are on in the log (default `[20, 8]`) |
+| `pendingJql` | the reception's Jira query (default: assigned to you, not done, no subtasks, by priority) |
+| `tokenBudget` | the day's tokens that fill the solar panels (default `5000000`) |
+| `usage` | `false` stops reading Claude Code's logs for today's tokens |
+| `prs` | `false` stops asking `gh` for each branch's PR |
 | `workspaces` | a starting list, `[{ "name", "root", "color" }]`, used only until you add or change a floor in the tower |
 | `demo` | `true` always shows the sample tower |
 | `frame` | `[width, height]` draws the tower in a box of that size, for screenshots |
@@ -110,6 +130,9 @@ A space on another machine joins the same floor when its folder sits at the same
 - `find`, three folders deep in a workspace folder, to list its repositories when you click `+ new`.
 - `hc read`, the last 40 lines of each agent's screen on the floor you are inside, every 6 seconds, to find the helpers it lists there.
 - With Jira on: `security` to read the token from the keychain (kept in memory only), and requests to your Jira address for the tickets on screen and their project's board, every minute. When a ticket or subtask changes status, the sidebar line posts a notification (a stopped one as a warning). Nothing else leaves your computer.
+- The sidebar line, with the tower closed: Herdr's agents every 5 seconds (for the log), Jira every minute, the pending tickets every 5 minutes.
+- `gh pr view <branch>` in each development's folder every 3 minutes, for its PR and checks (your own `gh` login).
+- `python3`, every 10 minutes, to add up today's tokens from `~/.claude/projects/**/*.jsonl` on this computer. Only the total is kept.
 - It writes one file, `mods/sweat-equity/.debug.json`: a snapshot of what the tower shows, for troubleshooting.
 
 ## If something looks wrong

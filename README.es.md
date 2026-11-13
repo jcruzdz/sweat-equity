@@ -61,6 +61,20 @@ Después agrega las dos teclas de `keys.json` a tu `~/.config/herdr-app/keys.jso
 
 **Presentar.** `Presentar` quita los controles de edición (ojo, lápiz, `+ nuevo`), el piso disponible y a quien espera afuera, para que solo quede el edificio. `Salir de presentar` los regresa. Los pisos ocultos siguen ocultos con o sin presentar.
 
+**Ver lo que Jira detuvo.** Una historia detenida en Jira (o una de sus subtareas) baja la persiana de su ventana a media altura, pone encima una baliza roja de pausa y una pausa en su etiqueta; `⏸ N detenidas` en el camino te lleva a la primera. Adentro, cada nota detenida dice cuánto lleva así, y pasadas `staleHours` llega un aviso más.
+
+**PR y CI.** El PR de la rama de cada desarrollo aparece arriba a la izquierda de su ventana: azul con palomita si sus checks pasan, naranja con tache si CI falla, morado ya mergeado. Un clic abre el PR. Cada rama con CI fallando agrega una nube con lluvia al cielo.
+
+**Tokens de hoy.** Los paneles solares del techo se encienden celda por celda con los tokens de hoy (de los logs de sesión de Claude Code en esta computadora) contra `tokenBudget`; pasado el presupuesto, parpadean.
+
+**Recepción.** La insignia del mostrador cuenta lo que Jira te asigna y ningún desarrollo trabaja. Un clic abre la lista; `Empezar` abre `+ nuevo` lleno desde el ticket (nombre de rama y primer mensaje) y, si dejas la casilla, mueve el ticket a la columna de trabajo del tablero.
+
+**Bitácora.** `Bitácora` en la barra lista lo que pasó mientras no veías: movimientos de Jira, agentes que esperan o terminaron, CI que se pone rojo o verde, merges. A la derecha eliges qué manda aviso (detenidas y terminadas, movimientos de agentes, movimientos de personas, horario de silencio). Varios movimientos de una historia en el mismo minuto hacen un solo aviso. La línea de la barra lateral cuenta las historias detenidas y los eventos sin ver.
+
+**Movida por un agente.** Cuando un agente mueve un ticket puede decirlo con la propiedad de issue `sweat-equity.mover` = `{ "by": "qa-verificador", "status": "<el estado al que lo movió>", "at": <epoch ms> }` (`PUT /rest/api/3/issue/{key}/properties/sweat-equity.mover`). La nota y el aviso muestran entonces un robot con su nombre hasta que el ticket se vuelva a mover.
+
+**`?`** en la barra explica cómo leer el edificio; la primera vez se abre solo.
+
 **¿Solo quieres verlo?** `Demo` pone un edificio inventado para ver todos los estados sin ningún nombre tuyo en pantalla.
 
 ## Pizarras con tus historias (opcional, Jira Cloud)
@@ -95,6 +109,12 @@ Todos opcionales, en `~/.config/herdr-app/sweat-equity.json`. El archivo se lee 
 | `keychain` | nombre de la entrada del llavero con el token (por defecto `herdr-jira`) |
 | `jiraBoards` | `{ "PROJ": 12 }`: qué tablero usa un proyecto cuando tiene varios (por defecto, su primer tablero kanban). Las columnas y qué estado va en cada una siempre se leen de ese tablero, nunca se fijan aquí |
 | `jiraBlocked` | regex de los nombres de estado que significan detenido (por defecto `deten\|bloque\|blocked\|hold\|impedi\|paus\|espera`): se quedan en su columna, en rojo |
+| `staleHours` | cuánto puede estar detenido un ticket antes de un aviso más (por defecto `24`) |
+| `quietHours` | `[desde, hasta]`, horas sin avisos cuando el silencio está encendido en la bitácora (por defecto `[20, 8]`) |
+| `pendingJql` | la consulta de Jira de la recepción (por defecto: asignadas a ti, sin terminar, sin subtareas, por prioridad) |
+| `tokenBudget` | los tokens del día que llenan los paneles solares (por defecto `5000000`) |
+| `usage` | `false` deja de leer los logs de Claude Code para los tokens de hoy |
+| `prs` | `false` deja de preguntarle a `gh` por el PR de cada rama |
 | `workspaces` | una lista inicial, `[{ "name", "root", "color" }]`, que solo se usa hasta que agregas o cambias un piso en el edificio |
 | `demo` | `true` muestra siempre el edificio de ejemplo |
 | `frame` | `[ancho, alto]` dibuja el edificio en un recuadro de ese tamaño, para capturas |
@@ -112,6 +132,9 @@ Un space en otra computadora cae en el mismo piso cuando su carpeta está en el 
 - `find`, a tres carpetas de profundidad dentro de la carpeta de un workspace, para listar sus repositorios cuando haces clic en `+ nuevo`.
 - `hc read`, las últimas 40 líneas de la pantalla de cada agente del piso en el que estás, cada 6 segundos, para encontrar los ayudantes que lista ahí.
 - Con Jira encendido: `security` para leer el token del llavero (se queda solo en memoria), y peticiones a tu dirección de Jira por las historias en pantalla y el tablero de su proyecto, cada minuto. Cuando una historia o subtarea cambia de estado, la línea de la barra lateral manda una notificación (si se detuvo, como advertencia). Nada más sale de tu computadora.
+- La línea de la barra lateral, con el edificio cerrado: los agentes de Herdr cada 5 segundos (para la bitácora), Jira cada minuto, los pendientes cada 5 minutos.
+- `gh pr view <rama>` en la carpeta de cada desarrollo cada 3 minutos, para su PR y checks (con tu propio login de `gh`).
+- `python3`, cada 10 minutos, para sumar los tokens de hoy de `~/.claude/projects/**/*.jsonl` en esta computadora. Solo se guarda el total.
 - Escribe un solo archivo, `mods/sweat-equity/.debug.json`: una foto de lo que muestra el edificio, para diagnosticar.
 
 ## Si algo se ve mal
